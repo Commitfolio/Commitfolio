@@ -98,6 +98,10 @@ Allowed `<type>` values:
 - `test`
 - `chore`
 
+Language rule:
+- Write commit subjects and commit bodies in Korean by default.
+- Keep trailer keys such as `Constraint:`, `Rejected:`, and `Tested:` in their defined form, but write the trailer values in Korean.
+
 ### Format
 
 ```
@@ -131,33 +135,33 @@ Not-tested: <known gaps in verification>
 13. **`main` and `develop` omit the number.** Do not invent an issue number on those branches.
 14. **Follow the exact spacing.** Use `feat (#264) : ...` and `feat : ...` with spaces exactly as shown.
 15. **Intent still comes first.** Even with the prefix, the subject should explain why the change exists, not merely what files changed.
+16. **Commit message language is Korean.** Write the subject and body in Korean unless an external system explicitly requires another language.
 
 ### Example
 
 ```
-fix (#128) : prevent silent session drops during long-running operations
+fix (#128) : 장시간 작업 중 세션이 조용히 끊기는 문제를 막는다
 
-The auth service returns inconsistent status codes on token
-expiry, so the interceptor catches all 4xx responses and
-triggers an inline refresh.
+인증 서비스가 토큰 만료 시 일관되지 않은 상태 코드를 반환하므로
+인터셉터가 모든 4xx 응답을 잡아 인라인 갱신을 트리거하도록 정리했다.
 
-Constraint: Auth service does not support token introspection
-Constraint: Must not add latency to non-expired-token paths
-Rejected: Extend token TTL to 24h | security policy violation
-Rejected: Background refresh on timer | race condition with concurrent requests
+Constraint: 인증 서비스가 토큰 introspection을 지원하지 않음
+Constraint: 만료되지 않은 토큰 경로에 지연을 추가하면 안 됨
+Rejected: 토큰 TTL을 24시간으로 연장 | 보안 정책 위반
+Rejected: 타이머 기반 백그라운드 갱신 | 동시 요청 시 경쟁 조건 발생
 Confidence: high
 Scope-risk: narrow
-Directive: Error handling is intentionally broad (all 4xx) — do not narrow without verifying upstream behavior
-Tested: Single expired token refresh (unit)
-Not-tested: Auth service cold-start > 500ms behavior
+Directive: 에러 처리는 의도적으로 넓게 잡았으므로 upstream 동작 검증 없이 좁히지 말 것
+Tested: 만료된 단일 토큰 갱신 유닛 테스트
+Not-tested: 인증 서비스 콜드스타트가 500ms를 넘는 경우
 ```
 
 Additional examples:
 
 ```
-feat (#264) : add chat history lookup API for roadmap updates
-docs : clarify FastAPI analysis job boundaries
-chore : align local OMX setup with project defaults
+feat (#264) : 로드맵 수정을 위한 채팅 내역 조회 API를 추가한다
+docs : FastAPI 분석 작업 경계를 문서에 명확히 적는다
+chore : 로컬 OMX 설정을 프로젝트 기본값에 맞춘다
 ```
 
 ### Trailer Vocabulary
