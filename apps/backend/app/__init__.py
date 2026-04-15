@@ -1,0 +1,1 @@
+"""Commitfolio backend bootstrap package."""
