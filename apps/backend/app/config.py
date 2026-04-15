@@ -15,6 +15,7 @@ class Settings:
     frontend_app_url: str = os.getenv("FRONTEND_APP_URL", "http://localhost:5173")
     session_secret: str = os.getenv("SESSION_SECRET", "dev-session-secret-change-me")
     cors_origin: str = os.getenv("BACKEND_CORS_ORIGIN", "http://localhost:5173")
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./commitfolio.db")
 
 
 @lru_cache

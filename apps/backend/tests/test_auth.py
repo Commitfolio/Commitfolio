@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.db import init_db
 from app.github_oauth import GitHubOAuthError, GitHubRepository, GitHubRepositoryPage
 from app.main import create_app, get_github_service
 
@@ -70,8 +71,10 @@ def create_test_client() -> TestClient:
             frontend_app_url="http://frontend.test",
             session_secret="test-session-secret",
             cors_origin="http://frontend.test",
+            database_url="sqlite+pysqlite:///:memory:",
         )
     )
+    init_db(app.state.db_engine)
     app.dependency_overrides[get_github_service] = lambda: FakeGitHubService()
     return TestClient(app)
 
@@ -96,8 +99,10 @@ def test_github_start_redirects_to_frontend_when_backend_is_not_configured() -> 
             frontend_app_url="http://frontend.test",
             session_secret="test-session-secret",
             cors_origin="http://frontend.test",
+            database_url="sqlite+pysqlite:///:memory:",
         )
     )
+    init_db(app.state.db_engine)
     app.dependency_overrides[get_github_service] = lambda: UnconfiguredGitHubService()
     client = TestClient(app)
 
@@ -234,8 +239,10 @@ def test_repositories_normalizes_github_failures() -> None:
             frontend_app_url="http://frontend.test",
             session_secret="test-session-secret",
             cors_origin="http://frontend.test",
+            database_url="sqlite+pysqlite:///:memory:",
         )
     )
+    init_db(app.state.db_engine)
     app.dependency_overrides[get_github_service] = lambda: FailingRepositoryGitHubService()
     client = TestClient(app)
 
@@ -253,5 +260,86 @@ def test_repositories_normalizes_github_failures() -> None:
         "error": {
             "code": "repository_lookup_failed",
             "message": "GitHub repository lookup failed.",
+        }
+    }
+
+
+def test_analysis_jobs_require_authenticated_session() -> None:
+    client = create_test_client()
+
+    response = client.post(
+        "/api/v1/analysis-jobs",
+        json={"repository_full_name": "octocat/commitfolio", "branch": "main"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "error": {
+            "code": "unauthenticated",
+            "message": "Authentication required.",
+        }
+    }
+
+
+def test_analysis_job_create_and_lookup() -> None:
+    client = create_test_client()
+
+    start_response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+    state = start_response.headers["location"].split("state=")[1]
+    client.get(
+        f"/api/v1/auth/github/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    create_response = client.post(
+        "/api/v1/analysis-jobs",
+        json={
+            "repository_full_name": "octocat/commitfolio",
+            "branch": "main",
+            "github_repo_id": 456,
+            "private": True,
+            "owner_type": "Organization",
+            "default_branch": "main",
+            "html_url": "https://github.com/octocat/commitfolio",
+            "description": "Portfolio generator",
+        },
+    )
+
+    assert create_response.status_code == 201
+    payload = create_response.json()
+    assert payload["job_id"].startswith("job_")
+    assert payload == {
+        "job_id": payload["job_id"],
+        "status": "queued",
+        "repository_full_name": "octocat/commitfolio",
+        "branch": "main",
+        "progress": {"stage": "queued", "percent": 0},
+        "result_id": None,
+        "failure_reason": None,
+    }
+
+    lookup_response = client.get(f"/api/v1/analysis-jobs/{payload['job_id']}")
+
+    assert lookup_response.status_code == 200
+    assert lookup_response.json() == payload
+
+
+def test_analysis_job_lookup_returns_not_found_for_unknown_job() -> None:
+    client = create_test_client()
+
+    start_response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+    state = start_response.headers["location"].split("state=")[1]
+    client.get(
+        f"/api/v1/auth/github/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    response = client.get("/api/v1/analysis-jobs/job_missing")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "analysis_job_not_found",
+            "message": "Analysis job was not found.",
         }
     }
