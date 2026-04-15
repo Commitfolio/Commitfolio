@@ -11,7 +11,7 @@ class Settings:
         "GITHUB_CALLBACK_URL",
         "http://localhost:8000/api/v1/auth/github/callback",
     )
-    github_scope: str = os.getenv("GITHUB_SCOPE", "read:user")
+    github_scope: str = os.getenv("GITHUB_SCOPE", "read:user repo read:org")
     frontend_app_url: str = os.getenv("FRONTEND_APP_URL", "http://localhost:5173")
     session_secret: str = os.getenv("SESSION_SECRET", "dev-session-secret-change-me")
     cors_origin: str = os.getenv("BACKEND_CORS_ORIGIN", "http://localhost:5173")

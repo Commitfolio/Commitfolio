@@ -63,10 +63,30 @@ This document defines the first-pass API shape for the FastAPI backend. Route na
         "admin": false,
         "push": true,
         "pull": true
-      }
+      },
+      "html_url": "https://github.com/owner/repo",
+      "description": "Example repository",
+      "updated_at": "2026-04-15T00:00:00Z"
     }
   ],
   "next_cursor": null
+}
+```
+
+- Auth / permissions:
+  - Requires the current session created by GitHub OAuth.
+  - Stage 1 keeps the GitHub access token in a server-side in-memory map keyed by a signed session
+    token id. This is a pre-persistence bridge, not the final production storage model.
+  - GitHub OAuth Apps require broad `repo` scope to include private repositories; keep this visible
+    until a tighter GitHub App/fine-grained permission strategy is implemented.
+- Error examples:
+
+```json
+{
+  "error": {
+    "code": "github_token_missing",
+    "message": "GitHub session token is missing. Sign in again."
+  }
 }
 ```
 

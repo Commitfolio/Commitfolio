@@ -49,6 +49,13 @@ describe("App", () => {
         name: "The Octocat",
         avatar_url: null,
       }),
+    }, {
+      status: 200,
+      ok: true,
+      json: async () => ({
+        items: [],
+        next_cursor: null,
+      }),
     });
 
     render(<App />);
@@ -71,6 +78,14 @@ describe("App", () => {
           avatar_url: null,
         }),
       },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [],
+          next_cursor: null,
+        }),
+      },
       { status: 204, ok: true },
     );
 
@@ -84,6 +99,86 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Continue with GitHub")).toBeInTheDocument();
+    });
+  });
+
+  it("renders repositories and lets the user select one", async () => {
+    mockFetchSequence(
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: "github:123",
+          github_login: "octocat",
+          connected: true,
+          name: "The Octocat",
+          avatar_url: null,
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 456,
+              full_name: "octocat/commitfolio",
+              private: true,
+              owner_type: "Organization",
+              default_branch: "main",
+              permissions: { admin: false, push: true, pull: true },
+              html_url: "https://github.com/octocat/commitfolio",
+              description: "Portfolio generator",
+              updated_at: "2026-04-15T00:00:00Z",
+            },
+          ],
+          next_cursor: null,
+        }),
+      },
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
+
+    expect(
+      screen.getByText(/is ready for the next Stage 2 analysis job bootstrap/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows repository loading errors", async () => {
+    mockFetchSequence(
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: "github:123",
+          github_login: "octocat",
+          connected: true,
+          name: "The Octocat",
+          avatar_url: null,
+        }),
+      },
+      {
+        status: 502,
+        ok: false,
+        json: async () => ({
+          error: {
+            code: "repository_lookup_failed",
+            message: "GitHub repository lookup failed.",
+          },
+        }),
+      },
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("GitHub repository lookup failed.")).toBeInTheDocument();
     });
   });
 });

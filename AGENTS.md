@@ -77,6 +77,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Generate or update these artifacts for net-new feature work unless equally good ones already exist: `docs/prd/<slug>.md`, `docs/tasks/<slug>.md`, `.omx/plans/prd-<slug>.md`, `.omx/plans/test-spec-<slug>.md`.
 - Use `docs/playbooks/default-feature-flow.md` as the default operating flow for request -> planning artifacts -> implementation -> verification -> PR.
 - Use `docs/playbooks/feature-delivery.md` when the user explicitly wants a human approval checkpoint before coding.
+- When the user asks to "continue the roadmap", "build the next stage", or otherwise does not name a specific feature, consult `docs/prd/mvp-feature-roadmap.md` and pick the earliest incomplete stage as the next default feature.
 
 <lore_commit_protocol>
 ## Lore Commit Protocol
