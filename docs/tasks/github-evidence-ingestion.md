@@ -7,7 +7,7 @@
 - Issue: #6
 - PRD: `docs/prd/github-evidence-ingestion.md`
 - Branch: `feat/6-github-evidence-ingestion`
-- PR:
+- PR: #7 (`https://github.com/Commitfolio/Commitfolio/pull/7`)
 
 ## Objective
 Implement Stage 3 so an analysis job can collect bounded GitHub evidence, persist normalized records, and append replayable job events for the future SSE stage.
@@ -65,6 +65,7 @@ cd apps/backend && .venv/bin/python -m pytest tests
 - 2026-04-15: Connected frontend run-analysis control and evidence summary UI.
 - 2026-04-15: Verification baseline, Alembic smoke migration, compileall, and frontend build passed.
 - 2026-04-15: Marked Stage 3 done in the roadmap and set Stage 4 as the next default stage.
+- 2026-04-15: Pushed branch and opened draft PR #7 to `develop`.
 
 ## Completion Notes
 - What changed: Added `AnalysisEvidence` and `AnalysisJobEvent`, migration 0002, bounded GitHub evidence collection, job run/evidence summary APIs, and frontend run-analysis evidence summary UI.
