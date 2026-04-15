@@ -15,7 +15,7 @@ This is the strongest harness path for this repo. The human should be able to sa
 4. Create or update `.omx/plans/prd-<slug>.md`.
 5. Create or update `.omx/plans/test-spec-<slug>.md`.
 6. Implement the narrowest viable slice.
-7. Run verification.
+7. Run verification using the repo baseline in `docs/playbooks/verification-baseline.md` unless the feature docs define a narrower or stricter command set.
 8. Update docs and task execution log.
 9. Prepare the branch for PR or draft PR.
 

@@ -30,6 +30,17 @@ This document defines the first-pass API shape for the FastAPI backend. Route na
 }
 ```
 
+- Unauthenticated response example:
+
+```json
+{
+  "error": {
+    "code": "unauthenticated",
+    "message": "Authentication required."
+  }
+}
+```
+
 ## Repositories
 
 ### `GET /api/v1/repositories`

@@ -60,9 +60,9 @@ Describe the user problem in 3-5 sentences.
 - [ ]
 
 ## Verification Plan
-- Unit:
-- Integration:
-- Manual:
+- Unit: Reference `docs/playbooks/verification-baseline.md` and list the exact unit-level command overrides for this feature.
+- Integration: Reference `docs/playbooks/verification-baseline.md` and list any feature-specific backend/frontend integration commands.
+- Manual: Describe the critical-path and failure-path checks that extend the baseline manual flow.
 
 ## Risks
 - 

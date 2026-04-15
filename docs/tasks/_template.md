@@ -28,6 +28,19 @@ State the narrow outcome for this task in 1-2 sentences.
 - [ ] Tests
 - [ ] Manual critical path check
 
+## Default Verification Commands
+Reference: `docs/playbooks/verification-baseline.md`
+
+```bash
+test -f apps/frontend/package.json || { echo "missing apps/frontend/package.json"; exit 1; }
+test -f apps/backend/pyproject.toml || { echo "missing apps/backend/pyproject.toml"; exit 1; }
+test -x apps/backend/.venv/bin/python || { echo "missing apps/backend/.venv/bin/python"; exit 1; }
+npm --prefix apps/frontend run lint
+npm --prefix apps/frontend run typecheck
+npm --prefix apps/frontend run test -- --run
+cd apps/backend && .venv/bin/python -m pytest tests
+```
+
 ## Deliverables
 - Code:
 - Docs:
