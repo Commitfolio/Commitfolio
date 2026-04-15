@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthenticatedUser, SessionState } from "../entities/session/session.types";
 import { AnalysisJobPanel } from "../features/analysis-job/AnalysisJobPanel";
 import { useAnalysisJobFlow } from "../features/analysis-job/useAnalysisJobFlow";
@@ -6,6 +6,9 @@ import { getStatusMessage } from "../features/github-auth/auth-status";
 import { SessionPanel } from "../features/github-auth/SessionPanel";
 import { RepositorySelector } from "../features/repository-selector/RepositorySelector";
 import { useRepositorySelector } from "../features/repository-selector/useRepositorySelector";
+import { RecentResults } from "../features/result-viewer/RecentResults";
+import { ResultDocument } from "../features/result-viewer/ResultDocument";
+import { useResultViewer } from "../features/result-viewer/useResultViewer";
 import { fetchCurrentUser, getAuthStartUrl, logout } from "../shared/api/commitfolio-api";
 
 export default function App() {
@@ -17,8 +20,15 @@ export default function App() {
   const authStartUrl = useMemo(() => getAuthStartUrl(), []);
   const statusMessage = useMemo(() => getStatusMessage(window.location.search), []);
   const analysis = useAnalysisJobFlow();
+  const results = useResultViewer();
+  const resetAnalysisJob = analysis.resetAnalysisJob;
+  const resetResult = results.resetResult;
+  const resetAnalysisAndResult = useCallback(() => {
+    resetAnalysisJob();
+    resetResult();
+  }, [resetAnalysisJob, resetResult]);
   const repositories = useRepositorySelector({
-    onResetAnalysis: analysis.resetAnalysisJob,
+    onResetAnalysis: resetAnalysisAndResult,
     sessionState,
   });
 
@@ -48,7 +58,8 @@ export default function App() {
       setUser(null);
       setSessionState("signed-out");
       repositories.resetRepositories();
-      analysis.resetAnalysisJob();
+      resetAnalysisJob();
+      resetResult();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Logout failed.");
     } finally {
@@ -103,11 +114,47 @@ export default function App() {
                 onCreateAnalysisJob={() =>
                   analysis.handleCreateAnalysisJob(repositories.selectedRepository!)
                 }
+                onGenerateResult={() => {
+                  if (analysis.analysisJob) {
+                    void results.handleGenerateResult(analysis.analysisJob.job_id);
+                  }
+                }}
                 onRefreshAnalysisJob={analysis.handleRefreshAnalysisJob}
                 onRunAnalysisJob={analysis.handleRunAnalysisJob}
+                resultGenerationDisabled={
+                  !analysis.analysisJob ||
+                  analysis.analysisJob.status !== "completed" ||
+                  results.resultState === "generating"
+                }
+                resultGenerationLabel={
+                  results.resultState === "generating" ? "Generating result..." : "Generate portfolio result"
+                }
               />
             ) : null}
           </RepositorySelector>
+        ) : null}
+
+        {sessionState === "signed-in" ? (
+          <section className="panel result-panel" aria-labelledby="result-viewer-title">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow subtle">Stage 5</span>
+                <h2 id="result-viewer-title">Portfolio result</h2>
+              </div>
+              <button className="button secondary" type="button" onClick={() => void results.loadRecentResults()}>
+                Load recent results
+              </button>
+            </div>
+            {results.resultError ? <p className="notice error">{results.resultError}</p> : null}
+            <RecentResults items={results.recentResults} onSelectResult={results.handleSelectResult} />
+            {results.result ? (
+              <ResultDocument result={results.result} />
+            ) : (
+              <p className="empty-state">
+                Run analysis, then generate a portfolio result to see the first editable draft.
+              </p>
+            )}
+          </section>
         ) : null}
 
         <div className="meta">

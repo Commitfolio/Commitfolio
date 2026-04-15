@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -69,6 +69,10 @@ class AnalysisJob(Base):
         back_populates="analysis_job",
         cascade="all, delete-orphan",
     )
+    results: Mapped[list["PortfolioResult"]] = relationship(
+        back_populates="analysis_job",
+        cascade="all, delete-orphan",
+    )
 
 
 class AnalysisEvidence(Base):
@@ -102,3 +106,42 @@ class AnalysisJobEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     analysis_job: Mapped[AnalysisJob] = relationship(back_populates="events")
+
+
+class PortfolioResult(Base):
+    __tablename__ = "portfolio_results"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    analysis_job_id: Mapped[str] = mapped_column(ForeignKey("analysis_jobs.id"), index=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    repository_full_name: Mapped[str] = mapped_column(String(256), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    headline: Mapped[str] = mapped_column(String(256), default="")
+    project_overview: Mapped[str] = mapped_column(Text, default="")
+    role_summary: Mapped[str] = mapped_column(Text, default="")
+    key_contributions: Mapped[list] = mapped_column(JSON, default=list)
+    tech_stack: Mapped[list] = mapped_column(JSON, default=list)
+    evidence_summary: Mapped[str] = mapped_column(Text, default="")
+    interview_questions: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    analysis_job: Mapped[AnalysisJob] = relationship(back_populates="results")
+    evidence_links: Mapped[list["PortfolioSectionEvidenceLink"]] = relationship(
+        back_populates="portfolio_result",
+        cascade="all, delete-orphan",
+    )
+
+
+class PortfolioSectionEvidenceLink(Base):
+    __tablename__ = "portfolio_section_evidence_links"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    portfolio_result_id: Mapped[str] = mapped_column(ForeignKey("portfolio_results.id"), index=True)
+    evidence_id: Mapped[str] = mapped_column(ForeignKey("analysis_evidence.id"), index=True)
+    section_key: Mapped[str] = mapped_column(String(64), index=True)
+    label: Mapped[str] = mapped_column(String(256), default="")
+    url: Mapped[str] = mapped_column(String(512), default="")
+
+    portfolio_result: Mapped[PortfolioResult] = relationship(back_populates="evidence_links")
+    evidence: Mapped[AnalysisEvidence] = relationship()

@@ -538,3 +538,81 @@ def test_analysis_job_run_persists_failed_status_on_github_error() -> None:
     }
     assert lookup_response.json()["status"] == "failed"
     assert lookup_response.json()["failure_reason"] == "GitHub evidence lookup failed."
+
+
+def test_portfolio_result_generation_requires_authenticated_session() -> None:
+    client = create_test_client()
+
+    response = client.post("/api/v1/analysis-jobs/job_missing/result")
+
+    assert response.status_code == 401
+
+
+def test_completed_analysis_job_generates_portfolio_result_and_detail() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+
+    result_response = client.post(f"/api/v1/analysis-jobs/{job_id}/result")
+
+    assert result_response.status_code == 200
+    result_payload = result_response.json()
+    assert result_payload["result_id"].startswith("res_")
+    assert result_payload["analysis_job_id"] == job_id
+    assert result_payload["repository_full_name"] == "octocat/commitfolio"
+    assert result_payload["headline"]
+    assert result_payload["project_overview"]
+    assert result_payload["role_summary"]
+    assert result_payload["key_contributions"]
+    assert result_payload["tech_stack"]
+    assert result_payload["evidence_summary"]
+    assert result_payload["interview_questions"]
+    assert result_payload["evidence_links"]
+    assert {link["section_key"] for link in result_payload["evidence_links"]} >= {
+        "key_contributions",
+        "evidence_summary",
+    }
+
+    lookup_response = client.get(f"/api/v1/results/{result_payload['result_id']}")
+    job_response = client.get(f"/api/v1/analysis-jobs/{job_id}")
+
+    assert lookup_response.status_code == 200
+    assert lookup_response.json()["result_id"] == result_payload["result_id"]
+    assert job_response.json()["result_id"] == result_payload["result_id"]
+
+
+def test_portfolio_result_list_returns_recent_results() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+    result_response = client.post(f"/api/v1/analysis-jobs/{job_id}/result")
+
+    list_response = client.get("/api/v1/results")
+
+    assert list_response.status_code == 200
+    assert list_response.json()["items"] == [
+        {
+            "result_id": result_response.json()["result_id"],
+            "analysis_job_id": job_id,
+            "repository_full_name": "octocat/commitfolio",
+            "headline": result_response.json()["headline"],
+            "version": 1,
+            "created_at": result_response.json()["created_at"],
+            "updated_at": result_response.json()["updated_at"],
+        }
+    ]
+
+
+def test_portfolio_result_generation_requires_completed_job() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+
+    response = client.post(f"/api/v1/analysis-jobs/{job_id}/result")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "analysis_job_result_not_available",
+            "message": "Completed analysis job was not found for result generation.",
+        }
+    }
