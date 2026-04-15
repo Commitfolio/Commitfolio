@@ -27,11 +27,14 @@ This document captures the first-pass core entities for the MVP. The goal is sta
 - Cached metadata for a repository the user can access
 - Key fields:
   - `id`
+  - `user_id`
   - `github_repo_id`
   - `full_name`
   - `owner_type`
   - `private`
   - `default_branch`
+  - `html_url`
+  - `description`
   - `last_synced_at`
 
 ### AnalysisJob
@@ -39,12 +42,15 @@ This document captures the first-pass core entities for the MVP. The goal is sta
 - Key fields:
   - `id`
   - `user_id`
+  - `repository_snapshot_id`
   - `repository_full_name`
+  - `branch`
   - `status`
   - `requested_at`
   - `started_at`
   - `completed_at`
   - `failure_reason`
+  - `result_id`
 
 ### AnalysisEvidence
 - Normalized evidence collected from GitHub during one job
@@ -84,8 +90,9 @@ This document captures the first-pass core entities for the MVP. The goal is sta
 
 ## Relationships
 - One `User` has one or more `ConnectedGitHubAccount` rows over time.
+- One `User` has many `RepositorySnapshot` rows for repositories selected or refreshed by that user.
 - One `User` starts many `AnalysisJob` rows.
-- One `AnalysisJob` targets one repository.
+- One `AnalysisJob` targets one `RepositorySnapshot`.
 - One `AnalysisJob` produces many `AnalysisEvidence` rows.
 - One `AnalysisJob` produces one or more `PortfolioResult` versions.
 - One `PortfolioResult` has many `PortfolioSectionEvidenceLink` rows.
