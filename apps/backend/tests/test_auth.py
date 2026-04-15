@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.github_oauth import GitHubOAuthError, GitHubRepository, GitHubRepositoryPage
 from app.main import create_app, get_github_service
 
 
@@ -29,6 +32,33 @@ class FakeGitHubService:
                 "avatar_url": "https://avatars.example/octocat.png",
             },
         )()
+
+    async def fetch_repositories(
+        self,
+        access_token: str,
+        *,
+        visibility: str = "all",
+        cursor: Optional[str] = None,
+    ) -> GitHubRepositoryPage:
+        assert access_token == "access-token"
+        assert visibility == "all"
+        assert cursor is None
+        return GitHubRepositoryPage(
+            items=[
+                GitHubRepository(
+                    id=456,
+                    full_name="octocat/commitfolio",
+                    private=True,
+                    owner_type="Organization",
+                    default_branch="main",
+                    permissions={"admin": False, "push": True, "pull": True},
+                    html_url="https://github.com/octocat/commitfolio",
+                    description="Portfolio generator",
+                    updated_at="2026-04-15T00:00:00Z",
+                )
+            ],
+            next_cursor=None,
+        )
 
 
 def create_test_client() -> TestClient:
@@ -136,5 +166,92 @@ def test_logout_clears_session() -> None:
         "error": {
             "code": "unauthenticated",
             "message": "Authentication required.",
+        }
+    }
+
+
+def test_repositories_requires_authenticated_session() -> None:
+    client = create_test_client()
+
+    response = client.get("/api/v1/repositories")
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "error": {
+            "code": "unauthenticated",
+            "message": "Authentication required.",
+        }
+    }
+
+
+def test_repositories_returns_accessible_repository_metadata() -> None:
+    client = create_test_client()
+
+    start_response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+    state = start_response.headers["location"].split("state=")[1]
+    client.get(
+        f"/api/v1/auth/github/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    response = client.get("/api/v1/repositories")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "id": 456,
+                "full_name": "octocat/commitfolio",
+                "private": True,
+                "owner_type": "Organization",
+                "default_branch": "main",
+                "permissions": {"admin": False, "push": True, "pull": True},
+                "html_url": "https://github.com/octocat/commitfolio",
+                "description": "Portfolio generator",
+                "updated_at": "2026-04-15T00:00:00Z",
+            }
+        ],
+        "next_cursor": None,
+    }
+
+
+def test_repositories_normalizes_github_failures() -> None:
+    class FailingRepositoryGitHubService(FakeGitHubService):
+        async def fetch_repositories(
+            self,
+            access_token: str,
+            *,
+            visibility: str = "all",
+            cursor: Optional[str] = None,
+        ) -> GitHubRepositoryPage:
+            raise GitHubOAuthError("repository_lookup_failed", "GitHub repository lookup failed.")
+
+    app = create_app(
+        Settings(
+            github_client_id="test-client-id",
+            github_client_secret="test-client-secret",
+            github_callback_url="http://testserver/api/v1/auth/github/callback",
+            frontend_app_url="http://frontend.test",
+            session_secret="test-session-secret",
+            cors_origin="http://frontend.test",
+        )
+    )
+    app.dependency_overrides[get_github_service] = lambda: FailingRepositoryGitHubService()
+    client = TestClient(app)
+
+    start_response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+    state = start_response.headers["location"].split("state=")[1]
+    client.get(
+        f"/api/v1/auth/github/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    response = client.get("/api/v1/repositories")
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "error": {
+            "code": "repository_lookup_failed",
+            "message": "GitHub repository lookup failed.",
         }
     }

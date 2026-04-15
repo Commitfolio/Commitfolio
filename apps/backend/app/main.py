@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, TypedDict, Union
+from typing import Literal, Optional, TypedDict, Union
 from urllib.parse import urlencode
 import secrets
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
@@ -39,6 +39,29 @@ class ErrorEnvelope(BaseModel):
     error: ErrorDetail
 
 
+class RepositoryPermissionsResponse(BaseModel):
+    admin: bool
+    push: bool
+    pull: bool
+
+
+class RepositoryResponse(BaseModel):
+    id: int
+    full_name: str
+    private: bool
+    owner_type: str
+    default_branch: str
+    permissions: RepositoryPermissionsResponse
+    html_url: str
+    description: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class RepositoryListResponse(BaseModel):
+    items: list[RepositoryResponse]
+    next_cursor: Optional[str] = None
+
+
 def build_frontend_redirect(frontend_app_url: str, **query: str) -> str:
     encoded = urlencode(query)
     return f"{frontend_app_url}/?{encoded}" if encoded else frontend_app_url
@@ -49,10 +72,23 @@ def get_github_service(request: Request) -> GitHubOAuthService:
     return GitHubOAuthService(settings)
 
 
+def build_error_response(status_code: int, code: str, message: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+            }
+        },
+    )
+
+
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     resolved_settings = settings or get_settings()
     app = FastAPI(title="Commitfolio API", version="0.1.0")
     app.state.settings = resolved_settings
+    app.state.github_access_tokens = {}
 
     app.add_middleware(
         SessionMiddleware,
@@ -134,6 +170,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             )
 
         request.session.pop("oauth_state", None)
+        previous_token_id = request.session.pop("github_token_id", None)
+        if previous_token_id:
+            request.app.state.github_access_tokens.pop(previous_token_id, None)
+
+        github_token_id = secrets.token_urlsafe(32)
+        request.app.state.github_access_tokens[github_token_id] = access_token
+        request.session["github_token_id"] = github_token_id
         request.session["user"] = {
             "id": f"github:{profile.id}",
             "github_login": profile.login,
@@ -156,20 +199,83 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         user = request.session.get("user")
 
         if not user:
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={
-                    "error": {
-                        "code": "unauthenticated",
-                        "message": "Authentication required.",
-                    }
-                },
+            return build_error_response(
+                status.HTTP_401_UNAUTHORIZED,
+                "unauthenticated",
+                "Authentication required.",
             )
 
         return MeResponse(**user)
 
+    @app.get(
+        "/api/v1/repositories",
+        response_model=RepositoryListResponse,
+        responses={401: {"model": ErrorEnvelope}, 502: {"model": ErrorEnvelope}},
+    )
+    async def list_repositories(
+        request: Request,
+        visibility: Literal["all", "public", "private"] = "all",
+        cursor: Optional[str] = Query(default=None),
+        github: GitHubOAuthService = Depends(get_github_service),
+    ) -> Union[RepositoryListResponse, JSONResponse]:
+        if not request.session.get("user"):
+            return build_error_response(
+                status.HTTP_401_UNAUTHORIZED,
+                "unauthenticated",
+                "Authentication required.",
+            )
+
+        github_token_id = request.session.get("github_token_id")
+        access_token = (
+            request.app.state.github_access_tokens.get(github_token_id)
+            if github_token_id
+            else None
+        )
+
+        if not access_token:
+            return build_error_response(
+                status.HTTP_401_UNAUTHORIZED,
+                "github_token_missing",
+                "GitHub session token is missing. Sign in again.",
+            )
+
+        try:
+            repository_page = await github.fetch_repositories(
+                access_token,
+                visibility=visibility,
+                cursor=cursor,
+            )
+        except GitHubOAuthError as error_response:
+            status_code = (
+                status.HTTP_400_BAD_REQUEST
+                if error_response.code == "invalid_repository_cursor"
+                else status.HTTP_502_BAD_GATEWAY
+            )
+            return build_error_response(status_code, error_response.code, error_response.message)
+
+        return RepositoryListResponse(
+            items=[
+                RepositoryResponse(
+                    id=repository.id,
+                    full_name=repository.full_name,
+                    private=repository.private,
+                    owner_type=repository.owner_type,
+                    default_branch=repository.default_branch,
+                    permissions=RepositoryPermissionsResponse(**repository.permissions),
+                    html_url=repository.html_url,
+                    description=repository.description,
+                    updated_at=repository.updated_at,
+                )
+                for repository in repository_page.items
+            ],
+            next_cursor=repository_page.next_cursor,
+        )
+
     @app.post("/api/v1/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
     async def logout(request: Request) -> Response:
+        github_token_id = request.session.get("github_token_id")
+        if github_token_id:
+            request.app.state.github_access_tokens.pop(github_token_id, None)
         request.session.clear()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
