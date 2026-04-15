@@ -72,7 +72,7 @@ omx team
 ## Branch and PR Discipline
 - One approved task per branch.
 - Branch name should include the issue number when one exists.
-- PR body should link the PRD and task doc.
+- PR body should link the PRD and task doc, and agent-authored PR titles/bodies should be written in Korean by default.
 - A task is incomplete if verification evidence is missing.
 
 ## Suggested Branch Naming

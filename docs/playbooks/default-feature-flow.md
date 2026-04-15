@@ -10,6 +10,7 @@ This is the strongest harness path for this repo. The human should be able to sa
 - The system should create planning artifacts first.
 - The system should continue into implementation by default.
 - The system should only pause for ambiguity, destructive action, or explicit approval gates.
+- 에이전트가 작성하는 PR 제목/본문, issue 설명, release notes, task completion notes, 사용자-facing 요약은 기본적으로 한국어로 작성한다. 영어 기술 용어, command/API/code identifier, GitHub 자동화 keyword는 필요한 경우 허용한다.
 
 ## Automatic Pipeline
 1. Interpret the request and derive a short feature slug.
@@ -32,7 +33,7 @@ When the user says "배포해줘" or otherwise asks to deploy:
 2. Confirm no open feature PRs still need to land in `develop`, unless the user explicitly wants a partial release.
 3. Run the verification baseline and any release-specific checks.
 4. Create or update a release PR from `develop` to `main`.
-5. Include the merged feature PRs, verification evidence, and remaining risks in the PR body.
+5. Include the merged feature PRs, verification evidence, and remaining risks in the PR body, written in Korean except for technical terms or required automation keywords.
 6. Merge the release PR into `main` when checks are acceptable.
 7. Check and report the `main` branch deployment pipeline status.
 
@@ -67,7 +68,7 @@ Expected system behavior:
 ## Output Discipline
 - Do not dump the full plan repeatedly.
 - Keep progress updates short.
-- End with evidence: changed files, verification run, remaining risks.
+- End with a Korean evidence summary: changed files, verification run, remaining risks.
 
 ## Related Playbooks
 - For the stricter GitHub issue → branch → PR operating lane, use `docs/playbooks/github-issue-first-flow.md`.
