@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createAnalysisJob,
   fetchEvidenceSummary,
   fetchAnalysisJob,
   fetchCurrentUser,
   fetchRepositories,
+  getAnalysisJobEventsUrl,
   getAuthStartUrl,
   logout,
   type AnalysisJob,
+  type AnalysisJobEvent,
   type AuthenticatedUser,
   type EvidenceSummary,
   type RepositorySummary,
@@ -19,6 +21,7 @@ type SessionState = "loading" | "signed-out" | "signed-in";
 type RepositoryState = "idle" | "loading" | "loaded" | "error";
 type AnalysisJobState = "idle" | "creating" | "created" | "refreshing" | "error";
 type EvidenceState = "idle" | "running" | "loaded" | "error";
+type ProgressStreamState = "idle" | "connecting" | "streaming" | "closed" | "error" | "unsupported";
 
 function getStatusMessage(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -62,9 +65,37 @@ export default function App() {
   const [evidenceState, setEvidenceState] = useState<EvidenceState>("idle");
   const [evidenceSummary, setEvidenceSummary] = useState<EvidenceSummary | null>(null);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [progressStreamState, setProgressStreamState] = useState<ProgressStreamState>("idle");
+  const [progressStreamError, setProgressStreamError] = useState<string | null>(null);
+  const [progressEvents, setProgressEvents] = useState<AnalysisJobEvent[]>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const authStartUrl = useMemo(() => getAuthStartUrl(), []);
   const statusMessage = useMemo(() => getStatusMessage(window.location.search), []);
+
+  const closeProgressStream = useCallback(() => {
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+  }, []);
+
+  const resetAnalysisJob = useCallback(() => {
+    closeProgressStream();
+    setAnalysisJobState("idle");
+    setAnalysisJob(null);
+    setAnalysisJobError(null);
+    setEvidenceState("idle");
+    setEvidenceSummary(null);
+    setEvidenceError(null);
+    setProgressStreamState("idle");
+    setProgressStreamError(null);
+    setProgressEvents([]);
+  }, [closeProgressStream]);
+
+  useEffect(() => {
+    return () => {
+      closeProgressStream();
+    };
+  }, [closeProgressStream]);
 
   useEffect(() => {
     async function loadSession() {
@@ -128,7 +159,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [repositoryVisibility, sessionState]);
+  }, [repositoryVisibility, resetAnalysisJob, sessionState]);
 
   async function handleLogout() {
     setLogoutPending(true);
@@ -200,14 +231,19 @@ export default function App() {
       return;
     }
 
+    clearStoredLastSequence(analysisJob.job_id);
+    setProgressEvents([]);
+    setEvidenceSummary(null);
     setEvidenceState("running");
     setEvidenceError(null);
+    startProgressStream(analysisJob.job_id);
 
     try {
       const runResponse = await runAnalysisJob(analysisJob.job_id);
       setAnalysisJob(runResponse.job);
       setAnalysisJobState("created");
       setEvidenceSummary(runResponse.evidence);
+      setProgressEvents(runResponse.evidence.latest_events);
       setEvidenceState("loaded");
     } catch (error) {
       setEvidenceError(error instanceof Error ? error.message : "Unknown error while running analysis.");
@@ -222,13 +258,98 @@ export default function App() {
     }
   }
 
-  function resetAnalysisJob() {
-    setAnalysisJobState("idle");
-    setAnalysisJob(null);
-    setAnalysisJobError(null);
-    setEvidenceState("idle");
-    setEvidenceSummary(null);
-    setEvidenceError(null);
+  function startProgressStream(jobId: string) {
+    closeProgressStream();
+    setProgressStreamError(null);
+
+    if (typeof EventSource === "undefined") {
+      setProgressStreamState("unsupported");
+      return;
+    }
+
+    const lastSequence = getStoredLastSequence(jobId);
+    const source = new EventSource(getAnalysisJobEventsUrl(jobId, lastSequence), {
+      withCredentials: true,
+    });
+    eventSourceRef.current = source;
+    setProgressStreamState("connecting");
+
+    source.onopen = () => {
+      setProgressStreamState("streaming");
+      setProgressStreamError(null);
+    };
+    source.onerror = () => {
+      setProgressStreamState("error");
+      setProgressStreamError("Progress stream disconnected. Reconnecting, or use Refresh status to recover.");
+      void recoverAnalysisJobSnapshot(jobId);
+    };
+
+    source.addEventListener("snapshot", (event) => {
+      const payload = parseSsePayload<{ job?: AnalysisJob }>(event);
+      if (payload?.job) {
+        setAnalysisJob(payload.job);
+      }
+    });
+
+    for (const eventName of ["progress", "job_completed", "job_failed"] as const) {
+      source.addEventListener(eventName, (event) => {
+        const payload = parseSsePayload<AnalysisJobEvent & { job_id: string }>(event);
+        if (!payload) {
+          return;
+        }
+
+        persistLastSequence(jobId, payload.sequence);
+        const progressEvent: AnalysisJobEvent = {
+          sequence: payload.sequence,
+          event_type: payload.event_type,
+          stage: payload.stage,
+          percent: payload.percent,
+          message: payload.message,
+          payload_json: payload.payload_json,
+          created_at: payload.created_at,
+        };
+        setProgressEvents((events) => appendProgressEvent(events, progressEvent));
+        setAnalysisJob((currentJob) =>
+          currentJob
+            ? {
+                ...currentJob,
+                status: eventName === "job_completed" ? "completed" : eventName === "job_failed" ? "failed" : "running",
+                progress: {
+                  stage: payload.stage,
+                  percent: payload.percent,
+                },
+                failure_reason: eventName === "job_failed" ? payload.message : currentJob.failure_reason,
+              }
+            : currentJob,
+        );
+
+        if (eventName === "job_completed" || eventName === "job_failed") {
+          setProgressStreamState("closed");
+          closeProgressStream();
+        }
+      });
+    }
+
+    source.addEventListener("heartbeat", () => {
+      setProgressStreamState("streaming");
+      setProgressStreamError(null);
+    });
+  }
+
+  async function recoverAnalysisJobSnapshot(jobId: string) {
+    try {
+      const refreshedJob = await fetchAnalysisJob(jobId);
+      setAnalysisJob(refreshedJob);
+
+      if (refreshedJob.status === "completed" || refreshedJob.status === "failed") {
+        const summary = await fetchEvidenceSummary(jobId);
+        setEvidenceSummary(summary);
+        setProgressEvents(summary.latest_events);
+        setEvidenceState("loaded");
+      }
+    } catch {
+      // Keep the latest visible snapshot; the manual Refresh action remains the recovery fallback.
+    }
   }
 
   return (
@@ -425,6 +546,12 @@ export default function App() {
                     >
                       {evidenceState === "running" ? "Running analysis..." : "Run analysis"}
                     </button>
+                    <div className="stream-status" aria-live="polite">
+                      Progress stream: {progressStreamState}
+                    </div>
+                    {progressStreamError ? (
+                      <p className="notice error">{progressStreamError}</p>
+                    ) : null}
                     {evidenceError ? <p className="notice error">{evidenceError}</p> : null}
                     {evidenceSummary ? (
                       <div className="evidence-summary">
@@ -440,9 +567,9 @@ export default function App() {
                             </div>
                           ))}
                         </dl>
-                        {evidenceSummary.latest_events.length > 0 ? (
+                        {(progressEvents.length > 0 ? progressEvents : evidenceSummary.latest_events).length > 0 ? (
                           <ul className="event-list" aria-label="Latest analysis events">
-                            {evidenceSummary.latest_events.map((event) => (
+                            {(progressEvents.length > 0 ? progressEvents : evidenceSummary.latest_events).map((event) => (
                               <li key={event.sequence}>
                                 <strong>#{event.sequence}</strong> {event.message}
                               </li>
@@ -452,8 +579,8 @@ export default function App() {
                       </div>
                     ) : null}
                     <p className="privacy-note">
-                      Stage 3 stores bounded GitHub evidence and replayable job events. Realtime
-                      SSE delivery starts in Stage 4.
+                      Stage 4 streams replayable progress from the durable job event log. Refresh
+                      status remains available as the recovery source of truth.
                     </p>
                   </div>
                 ) : null}
@@ -474,4 +601,42 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+function getStoredLastSequence(jobId: string): number | undefined {
+  const stored = sessionStorage.getItem(getLastSequenceStorageKey(jobId));
+  if (!stored) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(stored, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function persistLastSequence(jobId: string, sequence: number) {
+  sessionStorage.setItem(getLastSequenceStorageKey(jobId), String(sequence));
+}
+
+function clearStoredLastSequence(jobId: string) {
+  sessionStorage.removeItem(getLastSequenceStorageKey(jobId));
+}
+
+function appendProgressEvent(events: AnalysisJobEvent[], nextEvent: AnalysisJobEvent) {
+  return [...events.filter((event) => event.sequence !== nextEvent.sequence), nextEvent]
+    .sort((left, right) => left.sequence - right.sequence)
+    .slice(-8);
+}
+
+function getLastSequenceStorageKey(jobId: string) {
+  return `analysis-job:${jobId}:last-sequence`;
+}
+
+function parseSsePayload<T>(event: Event): T | null {
+  const message = event as MessageEvent<string>;
+
+  try {
+    return JSON.parse(message.data) as T;
+  } catch {
+    return null;
+  }
 }

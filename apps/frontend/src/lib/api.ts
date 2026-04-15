@@ -165,6 +165,16 @@ export async function fetchEvidenceSummary(jobId: string): Promise<EvidenceSumma
   return (await response.json()) as EvidenceSummary;
 }
 
+export function getAnalysisJobEventsUrl(jobId: string, after?: number): string {
+  const params = new URLSearchParams();
+  if (after !== undefined) {
+    params.set("after", String(after));
+  }
+
+  const query = params.toString();
+  return `${API_BASE_URL}/api/v1/analysis-jobs/${jobId}/events${query ? `?${query}` : ""}`;
+}
+
 export async function logout(): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
     method: "POST",
