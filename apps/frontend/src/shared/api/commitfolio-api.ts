@@ -194,3 +194,78 @@ async function getErrorMessage(response: Response, fallback: string): Promise<st
     return fallback;
   }
 }
+
+export type PortfolioEvidenceLink = {
+  section_key: string;
+  label: string;
+  url: string;
+  evidence_id: string;
+};
+
+export type PortfolioResult = {
+  result_id: string;
+  analysis_job_id: string;
+  repository_full_name: string;
+  version: number;
+  headline: string;
+  project_overview: string;
+  role_summary: string;
+  key_contributions: string[];
+  tech_stack: string[];
+  evidence_summary: string;
+  interview_questions: string[];
+  evidence_links: PortfolioEvidenceLink[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type PortfolioResultListItem = {
+  result_id: string;
+  analysis_job_id: string;
+  repository_full_name: string;
+  headline: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PortfolioResultList = {
+  items: PortfolioResultListItem[];
+};
+
+export async function generatePortfolioResult(jobId: string): Promise<PortfolioResult> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analysis-jobs/${jobId}/result`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to generate portfolio result."));
+  }
+
+  return (await response.json()) as PortfolioResult;
+}
+
+export async function fetchPortfolioResult(resultId: string): Promise<PortfolioResult> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/results/${resultId}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch portfolio result."));
+  }
+
+  return (await response.json()) as PortfolioResult;
+}
+
+export async function fetchPortfolioResults(): Promise<PortfolioResultList> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/results`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch portfolio results."));
+  }
+
+  return (await response.json()) as PortfolioResultList;
+}

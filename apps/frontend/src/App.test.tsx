@@ -350,6 +350,152 @@ describe("App", () => {
     expect(screen.getByText(/Analysis evidence ingestion completed/i)).toBeInTheDocument();
   });
 
+
+
+  it("generates and renders a portfolio result", async () => {
+    mockFetchSequence(
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: "github:123",
+          github_login: "octocat",
+          connected: true,
+          name: "The Octocat",
+          avatar_url: null,
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 456,
+              full_name: "octocat/commitfolio",
+              private: true,
+              owner_type: "Organization",
+              default_branch: "main",
+              permissions: { admin: false, push: true, pull: true },
+              html_url: "https://github.com/octocat/commitfolio",
+              description: "Portfolio generator",
+              updated_at: "2026-04-15T00:00:00Z",
+            },
+          ],
+          next_cursor: null,
+        }),
+      },
+      {
+        status: 201,
+        ok: true,
+        json: async () => ({
+          job_id: "job_123",
+          status: "queued",
+          repository_full_name: "octocat/commitfolio",
+          branch: "main",
+          progress: { stage: "queued", percent: 0 },
+          result_id: null,
+          failure_reason: null,
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          job: {
+            job_id: "job_123",
+            status: "completed",
+            repository_full_name: "octocat/commitfolio",
+            branch: "main",
+            progress: { stage: "completed", percent: 100 },
+            result_id: "res_123",
+            failure_reason: null,
+          },
+          evidence: {
+            job_id: "job_123",
+            total_count: 1,
+            counts: { commit: 1 },
+            latest_events: [],
+          },
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          result_id: "res_123",
+          analysis_job_id: "job_123",
+          repository_full_name: "octocat/commitfolio",
+          version: 1,
+          headline: "octocat/commitfolio portfolio draft",
+          project_overview: "Project overview text",
+          role_summary: "Role summary text",
+          key_contributions: ["Built the API"],
+          tech_stack: ["Python", "React"],
+          evidence_summary: "commit 1개",
+          interview_questions: ["What was the key decision?"],
+          evidence_links: [
+            {
+              section_key: "key_contributions",
+              label: "commit: Initial commit",
+              url: "https://github.com/octocat/commitfolio/commit/abc123",
+              evidence_id: "ev_123",
+            },
+          ],
+          created_at: "2026-04-15T00:00:00Z",
+          updated_at: "2026-04-15T00:00:00Z",
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              result_id: "res_123",
+              analysis_job_id: "job_123",
+              repository_full_name: "octocat/commitfolio",
+              headline: "octocat/commitfolio portfolio draft",
+              version: 1,
+              created_at: "2026-04-15T00:00:00Z",
+              updated_at: "2026-04-15T00:00:00Z",
+            },
+          ],
+        }),
+      },
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create analysis job" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("job_123")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Run analysis" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("1 item(s) collected")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Generate portfolio result" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "octocat/commitfolio portfolio draft" })).toBeInTheDocument();
+    });
+    expect(screen.getByText("Built the API")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "commit: Initial commit" })).toHaveAttribute(
+      "href",
+      "https://github.com/octocat/commitfolio/commit/abc123",
+    );
+  });
+
   it("subscribes to analysis progress with EventSource and stores the last sequence", async () => {
     vi.stubGlobal("EventSource", FakeEventSource);
 

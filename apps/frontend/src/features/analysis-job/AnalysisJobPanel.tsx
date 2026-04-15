@@ -21,7 +21,10 @@ type AnalysisJobPanelProps = {
   selectedRepository: RepositorySummary;
   onCreateAnalysisJob: () => void;
   onRefreshAnalysisJob: () => void;
+  onGenerateResult: () => void;
   onRunAnalysisJob: () => void;
+  resultGenerationDisabled: boolean;
+  resultGenerationLabel: string;
 };
 
 export function AnalysisJobPanel({
@@ -36,8 +39,11 @@ export function AnalysisJobPanel({
   progressStreamState,
   selectedRepository,
   onCreateAnalysisJob,
+  onGenerateResult,
   onRefreshAnalysisJob,
   onRunAnalysisJob,
+  resultGenerationDisabled,
+  resultGenerationLabel,
 }: AnalysisJobPanelProps) {
   const visibleEvents = progressEvents.length > 0 ? progressEvents : evidenceSummary?.latest_events ?? [];
 
@@ -101,6 +107,14 @@ export function AnalysisJobPanel({
             type="button"
           >
             {evidenceState === "running" ? "Running analysis..." : "Run analysis"}
+          </button>
+          <button
+            className="button secondary"
+            disabled={resultGenerationDisabled}
+            onClick={onGenerateResult}
+            type="button"
+          >
+            {resultGenerationLabel}
           </button>
           <div className="stream-status" aria-live="polite">
             Progress stream: {progressStreamState}

@@ -335,3 +335,55 @@ h1 {
     display: grid;
   }
 }
+
+.result-panel {
+  background: #ffffff;
+}
+
+.result-document {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.result-section {
+  display: grid;
+  gap: 0.65rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.result-section p,
+.result-list,
+.evidence-link-list {
+  color: #475569;
+  line-height: 1.6;
+}
+
+.result-list,
+.evidence-link-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.evidence-link-list a,
+.link-button {
+  color: #1d4ed8;
+  font-weight: 650;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.recent-results {
+  display: grid;
+  gap: 0.6rem;
+}
