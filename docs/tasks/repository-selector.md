@@ -7,7 +7,7 @@
 - Issue: #1
 - PRD: `docs/prd/repository-selector.md`
 - Branch: `feat/1-repository-selector`
-- PR: Pending draft PR creation
+- PR: #2 (`https://github.com/Commitfolio/Commitfolio/pull/2`)
 
 ## Objective
 Implement the narrow Stage 1 slice that lets a signed-in GitHub user list accessible repositories and select one repository as the input for the future analysis job stage.
@@ -62,6 +62,7 @@ cd apps/backend && .venv/bin/python -m pytest tests
 - 2026-04-15: Updated API contract and backend env/README scope notes for repository access.
 - 2026-04-15: Full verification baseline and frontend production build passed.
 - 2026-04-15: Marked Stage 1 done in the roadmap and set Stage 2 as the next default stage.
+- 2026-04-15: Pushed branch and opened draft PR #2.
 
 ## Completion Notes
 - What changed: Backend `GET /api/v1/repositories`, GitHub repo client, frontend repository selector UI, docs/contracts.
