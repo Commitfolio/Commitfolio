@@ -7,7 +7,7 @@
 - Issue: #8
 - PRD: `docs/prd/analysis-progress-sse.md`
 - Branch: `feat/8-analysis-progress-sse`
-- PR:
+- PR: #9 (`https://github.com/Commitfolio/Commitfolio/pull/9`)
 
 ## Objective
 Implement Stage 4 so analysis jobs expose replayable SSE progress and the frontend can subscribe, recover missed events, and reflect terminal status.
@@ -68,6 +68,7 @@ cd apps/backend && .venv/bin/python -m pytest tests
 - 2026-04-15: Implemented frontend EventSource subscription, last sequence storage, and progress stream UI.
 - 2026-04-15: Added backend SSE replay tests and frontend EventSource tests.
 - 2026-04-15: Marked Stage 4 done in the roadmap and set Stage 5 as the next default stage.
+- 2026-04-15: Pushed branch and opened draft PR #9 to `develop`.
 - 2026-04-15: Fixed architect findings so heartbeat events keep the stream open and fresh reruns reset stale per-job SSE cursors.
 
 ## Completion Notes
