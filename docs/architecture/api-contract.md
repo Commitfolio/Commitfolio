@@ -161,6 +161,62 @@ This document defines the first-pass API shape for the FastAPI backend. Route na
 }
 ```
 
+### `POST /api/v1/analysis-jobs/{job_id}/run`
+- Purpose: run bounded GitHub evidence ingestion for one queued/existing job
+- Behavior:
+  - Clears previous evidence/events for the job before rerun.
+  - Transitions the job to `running`.
+  - Collects commits, pull requests, issues, reviews, and changed files.
+  - Stores normalized `AnalysisEvidence` rows.
+  - Appends `AnalysisJobEvent` rows with monotonic per-job `sequence`.
+  - Marks the job `completed`, or `failed` with `failure_reason`.
+- Response example:
+
+```json
+{
+  "job": {
+    "job_id": "job_123",
+    "status": "completed",
+    "repository_full_name": "owner/repo",
+    "branch": "main",
+    "progress": {
+      "stage": "completed",
+      "percent": 100
+    },
+    "result_id": null,
+    "failure_reason": null
+  },
+  "evidence": {
+    "job_id": "job_123",
+    "total_count": 25,
+    "counts": {
+      "commit": 10,
+      "pull_request": 5,
+      "issue": 3,
+      "review": 2,
+      "changed_file": 5
+    },
+    "latest_events": [
+      {
+        "sequence": 7,
+        "event_type": "job_completed",
+        "stage": "completed",
+        "percent": 100,
+        "message": "Analysis evidence ingestion completed.",
+        "payload_json": {
+          "total_count": 25
+        },
+        "created_at": "2026-04-15T00:00:00+00:00"
+      }
+    ]
+  }
+}
+```
+
+### `GET /api/v1/analysis-jobs/{job_id}/evidence`
+- Purpose: return evidence counts and recent job events for the current user
+- Response: same `evidence` shape from the run response.
+
 ### `GET /api/v1/analysis-jobs/{job_id}/events`
 - Purpose: stream progress events over SSE
 - Content type: `text/event-stream`
