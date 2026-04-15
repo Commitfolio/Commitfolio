@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  createAnalysisJob,
+  fetchAnalysisJob,
   fetchCurrentUser,
   fetchRepositories,
   getAuthStartUrl,
   logout,
+  type AnalysisJob,
   type AuthenticatedUser,
   type RepositorySummary,
   type RepositoryVisibility,
@@ -11,6 +14,7 @@ import {
 
 type SessionState = "loading" | "signed-out" | "signed-in";
 type RepositoryState = "idle" | "loading" | "loaded" | "error";
+type AnalysisJobState = "idle" | "creating" | "created" | "refreshing" | "error";
 
 function getStatusMessage(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -48,6 +52,9 @@ export default function App() {
   const [repositories, setRepositories] = useState<RepositorySummary[]>([]);
   const [selectedRepository, setSelectedRepository] = useState<RepositorySummary | null>(null);
   const [repositoryError, setRepositoryError] = useState<string | null>(null);
+  const [analysisJobState, setAnalysisJobState] = useState<AnalysisJobState>("idle");
+  const [analysisJob, setAnalysisJob] = useState<AnalysisJob | null>(null);
+  const [analysisJobError, setAnalysisJobError] = useState<string | null>(null);
 
   const authStartUrl = useMemo(() => getAuthStartUrl(), []);
   const statusMessage = useMemo(() => getStatusMessage(window.location.search), []);
@@ -75,6 +82,7 @@ export default function App() {
       setRepositories([]);
       setSelectedRepository(null);
       setRepositoryError(null);
+      resetAnalysisJob();
       return;
     }
 
@@ -84,6 +92,7 @@ export default function App() {
       setRepositoryState("loading");
       setRepositoryError(null);
       setSelectedRepository(null);
+      resetAnalysisJob();
 
       try {
         const response = await fetchRepositories(repositoryVisibility);
@@ -123,6 +132,7 @@ export default function App() {
       setUser(null);
       setSessionState("signed-out");
       setRepositories([]);
+      resetAnalysisJob();
       setSelectedRepository(null);
       setRepositoryState("idle");
     } catch (error) {
@@ -130,6 +140,52 @@ export default function App() {
     } finally {
       setLogoutPending(false);
     }
+  }
+
+  async function handleCreateAnalysisJob() {
+    if (!selectedRepository) {
+      return;
+    }
+
+    setAnalysisJobState("creating");
+    setAnalysisJobError(null);
+
+    try {
+      const createdJob = await createAnalysisJob(selectedRepository);
+      setAnalysisJob(createdJob);
+      setAnalysisJobState("created");
+    } catch (error) {
+      setAnalysisJobError(
+        error instanceof Error ? error.message : "Unknown error while creating the analysis job.",
+      );
+      setAnalysisJobState("error");
+    }
+  }
+
+  async function handleRefreshAnalysisJob() {
+    if (!analysisJob) {
+      return;
+    }
+
+    setAnalysisJobState("refreshing");
+    setAnalysisJobError(null);
+
+    try {
+      const refreshedJob = await fetchAnalysisJob(analysisJob.job_id);
+      setAnalysisJob(refreshedJob);
+      setAnalysisJobState("created");
+    } catch (error) {
+      setAnalysisJobError(
+        error instanceof Error ? error.message : "Unknown error while refreshing the analysis job.",
+      );
+      setAnalysisJobState("error");
+    }
+  }
+
+  function resetAnalysisJob() {
+    setAnalysisJobState("idle");
+    setAnalysisJob(null);
+    setAnalysisJobError(null);
   }
 
   return (
@@ -238,7 +294,10 @@ export default function App() {
                         className="repository-button"
                         aria-pressed={isSelected}
                         aria-label={`Select ${repository.full_name}`}
-                        onClick={() => setSelectedRepository(repository)}
+                        onClick={() => {
+                          setSelectedRepository(repository);
+                          resetAnalysisJob();
+                        }}
                       >
                         <span className="repository-main">
                           <span className="repository-name">{repository.full_name}</span>
@@ -267,6 +326,60 @@ export default function App() {
                   <strong>{selectedRepository.full_name}</strong> is ready for the next Stage 2
                   analysis job bootstrap.
                 </p>
+                <button
+                  className="button primary"
+                  disabled={analysisJobState === "creating"}
+                  onClick={handleCreateAnalysisJob}
+                  type="button"
+                >
+                  {analysisJobState === "creating" ? "Creating job..." : "Create analysis job"}
+                </button>
+
+                {analysisJobError ? <p className="notice error">{analysisJobError}</p> : null}
+
+                {analysisJob ? (
+                  <div className="job-summary">
+                    <div>
+                      <span className="eyebrow subtle">Analysis job</span>
+                      <h3>{analysisJob.job_id}</h3>
+                    </div>
+                    <dl className="user-grid">
+                      <div>
+                        <dt>Status</dt>
+                        <dd>{analysisJob.status}</dd>
+                      </div>
+                      <div>
+                        <dt>Repository</dt>
+                        <dd>{analysisJob.repository_full_name}</dd>
+                      </div>
+                      <div>
+                        <dt>Branch</dt>
+                        <dd>{analysisJob.branch}</dd>
+                      </div>
+                      <div>
+                        <dt>Progress</dt>
+                        <dd>
+                          {analysisJob.progress.stage} · {analysisJob.progress.percent}%
+                        </dd>
+                      </div>
+                    </dl>
+                    {analysisJob.failure_reason ? (
+                      <p className="notice error">{analysisJob.failure_reason}</p>
+                    ) : null}
+                    <button
+                      className="button secondary"
+                      disabled={analysisJobState === "refreshing"}
+                      onClick={handleRefreshAnalysisJob}
+                      type="button"
+                    >
+                      {analysisJobState === "refreshing" ? "Refreshing..." : "Refresh status"}
+                    </button>
+                    <p className="privacy-note">
+                      Stage 2 creates a queued job only. GitHub evidence ingestion and realtime
+                      progress updates start in later stages.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>
