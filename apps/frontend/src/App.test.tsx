@@ -150,6 +150,69 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("creates an analysis job for the selected repository", async () => {
+    mockFetchSequence(
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: "github:123",
+          github_login: "octocat",
+          connected: true,
+          name: "The Octocat",
+          avatar_url: null,
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 456,
+              full_name: "octocat/commitfolio",
+              private: true,
+              owner_type: "Organization",
+              default_branch: "main",
+              permissions: { admin: false, push: true, pull: true },
+              html_url: "https://github.com/octocat/commitfolio",
+              description: "Portfolio generator",
+              updated_at: "2026-04-15T00:00:00Z",
+            },
+          ],
+          next_cursor: null,
+        }),
+      },
+      {
+        status: 201,
+        ok: true,
+        json: async () => ({
+          job_id: "job_123",
+          status: "queued",
+          repository_full_name: "octocat/commitfolio",
+          branch: "main",
+          progress: { stage: "queued", percent: 0 },
+          result_id: null,
+          failure_reason: null,
+        }),
+      },
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create analysis job" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("job_123")).toBeInTheDocument();
+    });
+    expect(screen.getByText("queued · 0%")).toBeInTheDocument();
+  });
+
   it("shows repository loading errors", async () => {
     mockFetchSequence(
       {

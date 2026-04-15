@@ -99,7 +99,13 @@ This document defines the first-pass API shape for the FastAPI backend. Route na
 ```json
 {
   "repository_full_name": "owner/repo",
-  "branch": "main"
+  "branch": "main",
+  "github_repo_id": 123,
+  "private": true,
+  "owner_type": "Organization",
+  "default_branch": "main",
+  "html_url": "https://github.com/owner/repo",
+  "description": "Example repository"
 }
 ```
 
@@ -108,9 +114,22 @@ This document defines the first-pass API shape for the FastAPI backend. Route na
 ```json
 {
   "job_id": "job_123",
-  "status": "queued"
+  "status": "queued",
+  "repository_full_name": "owner/repo",
+  "branch": "main",
+  "progress": {
+    "stage": "queued",
+    "percent": 0
+  },
+  "result_id": null,
+  "failure_reason": null
 }
 ```
+
+- Side effects:
+  - Upserts a `RepositorySnapshot` for the current user/session owner.
+  - Creates one `AnalysisJob` row in `queued` state.
+  - Does not collect GitHub evidence yet.
 
 ### `GET /api/v1/analysis-jobs/{job_id}`
 - Purpose: fetch current job status and summary
@@ -120,11 +139,25 @@ This document defines the first-pass API shape for the FastAPI backend. Route na
 {
   "job_id": "job_123",
   "status": "running",
+  "repository_full_name": "owner/repo",
+  "branch": "main",
   "progress": {
     "stage": "collecting_pull_requests",
     "percent": 45
   },
-  "result_id": null
+  "result_id": null,
+  "failure_reason": null
+}
+```
+
+- Not found response example:
+
+```json
+{
+  "error": {
+    "code": "analysis_job_not_found",
+    "message": "Analysis job was not found."
+  }
 }
 ```
 

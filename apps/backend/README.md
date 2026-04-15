@@ -29,3 +29,33 @@ or another fine-grained permission model before public launch.
   - Uses a server-side in-memory token map keyed by the signed session cookie.
   - Returns repository metadata only; deeper commit/PR/issue/review/changed-file collection belongs
     to later analysis stages.
+
+## Stage 2 persistence and analysis jobs
+
+Local development defaults to SQLite:
+
+```bash
+DATABASE_URL=sqlite:///./commitfolio.db
+```
+
+For Neon/PostgreSQL, use a SQLAlchemy-compatible psycopg URL:
+
+```bash
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require
+```
+
+Run migrations from `apps/backend`:
+
+```bash
+.venv/bin/alembic upgrade head
+```
+
+Stage 2 endpoints:
+
+- `POST /api/v1/analysis-jobs`
+  - Requires a signed-in session.
+  - Stores/updates a `RepositorySnapshot`.
+  - Creates a queued `AnalysisJob`.
+- `GET /api/v1/analysis-jobs/{job_id}`
+  - Returns current job status, progress placeholder, result id, and failure reason.
+  - Jobs remain `queued` until later stages add evidence ingestion and progress updates.

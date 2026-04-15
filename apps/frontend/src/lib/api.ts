@@ -29,6 +29,19 @@ export type RepositoryListResponse = {
   next_cursor: string | null;
 };
 
+export type AnalysisJob = {
+  job_id: string;
+  status: string;
+  repository_full_name: string;
+  branch: string;
+  progress: {
+    stage: string;
+    percent: number;
+  };
+  result_id: string | null;
+  failure_reason: string | null;
+};
+
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -65,6 +78,44 @@ export async function fetchRepositories(
   }
 
   return (await response.json()) as RepositoryListResponse;
+}
+
+export async function createAnalysisJob(repository: RepositorySummary): Promise<AnalysisJob> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analysis-jobs`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      repository_full_name: repository.full_name,
+      branch: repository.default_branch,
+      github_repo_id: repository.id,
+      private: repository.private,
+      owner_type: repository.owner_type,
+      default_branch: repository.default_branch,
+      html_url: repository.html_url,
+      description: repository.description,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to create analysis job."));
+  }
+
+  return (await response.json()) as AnalysisJob;
+}
+
+export async function fetchAnalysisJob(jobId: string): Promise<AnalysisJob> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analysis-jobs/${jobId}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch analysis job."));
+  }
+
+  return (await response.json()) as AnalysisJob;
 }
 
 export async function logout(): Promise<void> {
