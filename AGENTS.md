@@ -64,6 +64,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Target stack until the repo says otherwise: `apps/frontend` = React + Vite + TypeScript, `apps/backend` = FastAPI, persistence = PostgreSQL, realtime status = SSE.
 - Document-first delivery is mandatory for net-new feature work. Create or update a PRD in `docs/prd/` and an execution checklist in `docs/tasks/` before implementation.
 - Default feature-flow rule: a net-new feature request should automatically enter a plan-first pipeline without waiting for a special command from the user.
+- Feature briefing rule: before starting any feature-development implementation, briefly state in Korean which OMX/project workflow will be used, why it fits, what alternatives were considered or recommended (`default feature flow`, `$plan`, `$ralph`, `$team`, solo execution), which docs/issues/branches will be created or updated, and what verification commands will prove completion.
 - Auto-continue rule: after creating or updating the planning artifacts, continue into implementation by default unless the request is materially ambiguous, destructive, security-sensitive, or the user explicitly asked for an approval gate.
 - Approval gate rule: only switch into a strict approval-waiting mode when the user explicitly says approval is required before implementation, or when the task is risky enough to require human confirmation.
 - Every feature task should point back to one PRD and keep scope narrow enough to finish with verification in one branch/PR.
