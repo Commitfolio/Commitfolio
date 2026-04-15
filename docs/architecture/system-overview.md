@@ -46,6 +46,8 @@ Commitfolio analyzes activity from one GitHub repository that a signed-in user c
 - OpenAI API in later quality-improvement phase
 
 ## Backend Module Direction
+- Backend-specific code layout and Python style rules are tracked in
+  [`backend-code-architecture.md`](./backend-code-architecture.md).
 - `api/`: FastAPI routers and request/response schemas
 - `services/`: orchestration and business use cases
 - `integrations/github/`: OAuth + GitHub API client code
