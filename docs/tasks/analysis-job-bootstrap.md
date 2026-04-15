@@ -7,7 +7,7 @@
 - Issue: #3
 - PRD: `docs/prd/analysis-job-bootstrap.md`
 - Branch: `feat/3-analysis-job-bootstrap`
-- PR: #4 (`https://github.com/Commitfolio/Commitfolio/pull/4`)
+- PR: #4 stacked (`https://github.com/Commitfolio/Commitfolio/pull/4`), #5 to develop (`https://github.com/Commitfolio/Commitfolio/pull/5`)
 
 ## Objective
 Implement Stage 2 so a selected repository becomes a persisted queued analysis job with a status lookup endpoint and minimal frontend status UI.
@@ -64,6 +64,7 @@ cd apps/backend && .venv/bin/python -m pytest tests
 - 2026-04-15: Connected selected repository UI to job creation and status refresh.
 - 2026-04-15: Verification baseline, Alembic smoke migration, compileall, and frontend build passed.
 - 2026-04-15: Pushed branch and opened stacked draft PR #4 with base `feat/1-repository-selector`.
+- 2026-04-15: After #4 merged into the feature branch rather than `develop`, opened corrective draft PR #5 from `feat/3-analysis-job-bootstrap` to `develop`.
 
 ## Completion Notes
 - What changed: Added SQLAlchemy/Alembic persistence baseline, repository snapshot and analysis job models, create/status APIs, and frontend job creation/status UI.
