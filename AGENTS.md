@@ -68,6 +68,9 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Approval gate rule: only switch into a strict approval-waiting mode when the user explicitly says approval is required before implementation, or when the task is risky enough to require human confirmation.
 - Every feature task should point back to one PRD and keep scope narrow enough to finish with verification in one branch/PR.
 - Definition of done for feature work is not "code written". Done means the related docs are current, verification was run, and the branch is ready for a PR or draft PR.
+- GitHub-delivered feature work should default to **issue-first** execution when `gh` auth and repo access are available: create or link the issue, derive the branch from the issue number, implement, verify, push, and open a PR/draft PR.
+- Preferred branch naming for issue-backed work is `<type>/<issue>-<slug>` such as `feat/123-repo-selector` or `fix/124-oauth-callback`.
+- If GitHub auth or repo permission is unavailable, continue the local doc/implementation/verification flow, but explicitly report issue/push/PR steps as blocked rather than silently skipping them.
 - Prefer rule-based and deterministic implementations before adding LLM-dependent behavior. OpenAI integration is an enhancement layer, not a prerequisite for core flow completion.
 - For GitHub/OAuth/data access work, minimize scopes and document exactly what data is read, stored, and exposed to the user.
 - When a request conflicts with the current PRD or task checklist, update the docs first, then implement.
@@ -409,10 +412,12 @@ Mode selection:
 
 Commitfolio default feature pipeline:
 - Treat plain feature intent such as "make X", "build Y", or "add Z" as sufficient to start the harness flow; do not require the user to name OMX commands.
-- First, derive a feature slug and create/update the PRD, task checklist, and `.omx/plans` artifacts.
-- Second, if the request is clear and low-risk, continue directly into implementation.
-- Third, if the request is ambiguous or high-risk, stop at the planning artifacts and ask only the minimum blocking question.
-- Fourth, before finishing, update the task execution log and report verification evidence.
+- First, derive a feature slug and, when GitHub access is available, create or link the feature issue.
+- Second, create/update the PRD, task checklist, and `.omx/plans` artifacts.
+- Third, create the feature branch from the issue number when one exists.
+- Fourth, if the request is clear and low-risk, continue directly into implementation.
+- Fifth, if the request is ambiguous or high-risk, stop at the planning artifacts and ask only the minimum blocking question.
+- Sixth, before finishing, update the task execution log, push the branch when possible, and report PR or blocker evidence.
 
 Command routing:
 - When `USE_OMX_EXPLORE_CMD` enables advisory routing, strongly prefer `omx explore` as the default surface for simple read-only repository lookup tasks (files, symbols, patterns, relationships).

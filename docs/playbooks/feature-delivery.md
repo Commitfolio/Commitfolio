@@ -6,13 +6,14 @@ If you want the strongest automatic path, use [default-feature-flow.md](/Users/d
 
 ## Default Flow
 1. Request arrives.
-2. Create or update a PRD in `docs/prd/`.
-3. Create or update a task checklist in `docs/tasks/`.
-4. Human reviews and approves scope.
-5. Create issue and branch.
-6. Implement against the approved docs.
-7. Run verification.
-8. Open a draft PR with doc links and verification notes.
+2. Create or link a GitHub issue.
+3. Create or update a PRD in `docs/prd/`.
+4. Create or update a task checklist in `docs/tasks/`.
+5. Human reviews and approves scope.
+6. Create branch from the issue.
+7. Implement against the approved docs.
+8. Run verification.
+9. Open a draft PR with doc links and verification notes.
 
 ## What The Human Should Do
 - Describe the feature or change.
@@ -66,18 +67,19 @@ omx team
 - Use this file when you want a deliberate review checkpoint before coding.
 - Use it for auth, permissions, billing, data policy, or major scope questions.
 - Use [default-feature-flow.md](/Users/donggun/Desktop/Commitfolio/docs/playbooks/default-feature-flow.md) when you want the system to continue automatically unless blocked.
+- Use [github-issue-first-flow.md](/Users/donggun/Desktop/Commitfolio/docs/playbooks/github-issue-first-flow.md) when you want GitHub issue → branch → PR discipline spelled out.
 
 ## Branch and PR Discipline
 - One approved task per branch.
-- Branch name should communicate the feature intent.
+- Branch name should include the issue number when one exists.
 - PR body should link the PRD and task doc.
 - A task is incomplete if verification evidence is missing.
 
 ## Suggested Branch Naming
-- `feat/github-oauth`
-- `feat/repo-selector`
-- `feat/analysis-job-sse`
-- `fix/pdf-layout`
+- `feat/123-github-oauth`
+- `feat/124-repo-selector`
+- `feat/125-analysis-job-sse`
+- `fix/126-pdf-layout`
 
 ## Minimal Prompting Contract
 Use this pattern when you want "approve first, implement second":

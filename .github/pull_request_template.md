@@ -7,6 +7,8 @@
 - Task:
 - Issue:
 
+> Net-new feature work should normally link a GitHub issue and follow the issue-first flow documented in `docs/playbooks/github-issue-first-flow.md`.
+
 ## Verification
 - [ ] Lint
 - [ ] Typecheck

@@ -4,6 +4,7 @@
 - Title:
 - Status: Draft | Ready | In Progress | Blocked | Done
 - Owner:
+- Issue:
 - PRD:
 - Branch:
 - PR:

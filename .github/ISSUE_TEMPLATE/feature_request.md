@@ -15,6 +15,9 @@ What user or product problem does this solve?
 ## Desired Outcome
 What should be true when this is done?
 
+## Suggested Slug
+What short ASCII slug should PRD/task/branch names use?
+
 ## In Scope
 - 
 
@@ -39,3 +42,4 @@ What should be true when this is done?
 ## PRD / Task Follow-up
 - Expected PRD file: `docs/prd/<slug>.md`
 - Expected task file: `docs/tasks/<slug>.md`
+- Expected branch (after issue creation): `feat/<issue>-<slug>`
