@@ -23,6 +23,8 @@ Commitfolio analyzes activity from one GitHub repository that a signed-in user c
 ## Main Boundaries
 
 ### Frontend (`apps/frontend`)
+- Frontend-specific React structure and development rules are tracked in
+  [`frontend-code-architecture.md`](./frontend-code-architecture.md).
 - Login and repository selection UI
 - Analysis start / progress UI
 - Portfolio result viewer and editor
