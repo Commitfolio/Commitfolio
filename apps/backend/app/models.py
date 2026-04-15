@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -52,6 +52,8 @@ class AnalysisJob(Base):
     repository_full_name: Mapped[str] = mapped_column(String(256), index=True)
     branch: Mapped[str] = mapped_column(String(128), default="")
     status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
+    current_stage: Mapped[str] = mapped_column(String(64), default="queued")
+    progress_percent: Mapped[int] = mapped_column(Integer, default=0)
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
@@ -59,3 +61,44 @@ class AnalysisJob(Base):
     result_id: Mapped[Optional[str]] = mapped_column(String(64))
 
     repository_snapshot: Mapped[RepositorySnapshot] = relationship(back_populates="analysis_jobs")
+    evidence: Mapped[list["AnalysisEvidence"]] = relationship(
+        back_populates="analysis_job",
+        cascade="all, delete-orphan",
+    )
+    events: Mapped[list["AnalysisJobEvent"]] = relationship(
+        back_populates="analysis_job",
+        cascade="all, delete-orphan",
+    )
+
+
+class AnalysisEvidence(Base):
+    __tablename__ = "analysis_evidence"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    analysis_job_id: Mapped[str] = mapped_column(ForeignKey("analysis_jobs.id"), index=True)
+    source_type: Mapped[str] = mapped_column(String(32), index=True)
+    source_id: Mapped[str] = mapped_column(String(256))
+    url: Mapped[str] = mapped_column(String(512), default="")
+    payload_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    analysis_job: Mapped[AnalysisJob] = relationship(back_populates="evidence")
+
+
+class AnalysisJobEvent(Base):
+    __tablename__ = "analysis_job_events"
+    __table_args__ = (
+        UniqueConstraint("analysis_job_id", "sequence", name="uq_analysis_job_events_job_sequence"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    analysis_job_id: Mapped[str] = mapped_column(ForeignKey("analysis_jobs.id"), index=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    event_type: Mapped[str] = mapped_column(String(64), index=True)
+    stage: Mapped[str] = mapped_column(String(64), default="")
+    percent: Mapped[int] = mapped_column(Integer, default=0)
+    message: Mapped[str] = mapped_column(String(512), default="")
+    payload_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    analysis_job: Mapped[AnalysisJob] = relationship(back_populates="events")

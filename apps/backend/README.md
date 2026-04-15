@@ -59,3 +59,20 @@ Stage 2 endpoints:
 - `GET /api/v1/analysis-jobs/{job_id}`
   - Returns current job status, progress placeholder, result id, and failure reason.
   - Jobs remain `queued` until later stages add evidence ingestion and progress updates.
+
+## Stage 3 evidence ingestion
+
+Stage 3 runs bounded GitHub evidence ingestion synchronously for the MVP baseline:
+
+- `POST /api/v1/analysis-jobs/{job_id}/run`
+  - Requires a signed-in session and active server-side GitHub token.
+  - Clears prior evidence/events for that job before rerun.
+  - Collects recent commits, pull requests, issues, reviews, and changed files.
+  - Stores normalized `AnalysisEvidence` rows.
+  - Appends ordered `AnalysisJobEvent` rows for future SSE replay.
+- `GET /api/v1/analysis-jobs/{job_id}/evidence`
+  - Returns evidence counts plus recent event log entries.
+
+Jobs transition from `queued` to `running` and then `completed` or `failed`. Stage 4 should expose
+the durable event log through SSE; the event log, not the live SSE connection, is the source of truth
+for replay.
