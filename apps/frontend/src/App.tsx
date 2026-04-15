@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchCurrentUser, getAuthStartUrl, logout, type AuthenticatedUser } from "./lib/api";
+import {
+  fetchCurrentUser,
+  fetchRepositories,
+  getAuthStartUrl,
+  logout,
+  type AuthenticatedUser,
+  type RepositorySummary,
+  type RepositoryVisibility,
+} from "./lib/api";
 
 type SessionState = "loading" | "signed-out" | "signed-in";
+type RepositoryState = "idle" | "loading" | "loaded" | "error";
 
 function getStatusMessage(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -34,6 +43,11 @@ export default function App() {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [logoutPending, setLogoutPending] = useState(false);
+  const [repositoryState, setRepositoryState] = useState<RepositoryState>("idle");
+  const [repositoryVisibility, setRepositoryVisibility] = useState<RepositoryVisibility>("all");
+  const [repositories, setRepositories] = useState<RepositorySummary[]>([]);
+  const [selectedRepository, setSelectedRepository] = useState<RepositorySummary | null>(null);
+  const [repositoryError, setRepositoryError] = useState<string | null>(null);
 
   const authStartUrl = useMemo(() => getAuthStartUrl(), []);
   const statusMessage = useMemo(() => getStatusMessage(window.location.search), []);
@@ -55,6 +69,51 @@ export default function App() {
     void loadSession();
   }, []);
 
+  useEffect(() => {
+    if (sessionState !== "signed-in") {
+      setRepositoryState("idle");
+      setRepositories([]);
+      setSelectedRepository(null);
+      setRepositoryError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRepositories() {
+      setRepositoryState("loading");
+      setRepositoryError(null);
+      setSelectedRepository(null);
+
+      try {
+        const response = await fetchRepositories(repositoryVisibility);
+
+        if (cancelled) {
+          return;
+        }
+
+        setRepositories(response.items);
+        setRepositoryState("loaded");
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setRepositories([]);
+        setRepositoryError(
+          error instanceof Error ? error.message : "Unknown error while loading repositories.",
+        );
+        setRepositoryState("error");
+      }
+    }
+
+    void loadRepositories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [repositoryVisibility, sessionState]);
+
   async function handleLogout() {
     setLogoutPending(true);
     setErrorMessage(null);
@@ -63,6 +122,9 @@ export default function App() {
       await logout();
       setUser(null);
       setSessionState("signed-out");
+      setRepositories([]);
+      setSelectedRepository(null);
+      setRepositoryState("idle");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Logout failed.");
     } finally {
@@ -74,10 +136,11 @@ export default function App() {
     <main className="shell">
       <section className="card">
         <span className="eyebrow">Commitfolio bootstrap</span>
-        <h1>GitHub OAuth vertical slice</h1>
+        <h1>Choose the repository to turn into a portfolio</h1>
         <p className="lede">
-          This screen validates the first auth-first harness path for Commitfolio: signed-out CTA,
-          GitHub redirect, callback completion, session check, and logout.
+          Commitfolio starts with GitHub OAuth, then asks you to choose one repository. Stage 1 reads
+          repository metadata only; commits, pull requests, issues, reviews, and changed files are
+          collected in later analysis stages.
         </p>
 
         {statusMessage ? <p className="notice success">{statusMessage}</p> : null}
@@ -122,6 +185,92 @@ export default function App() {
             </>
           ) : null}
         </div>
+
+        {sessionState === "signed-in" ? (
+          <section className="panel repository-panel" aria-labelledby="repository-selector-title">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow subtle">Stage 1</span>
+                <h2 id="repository-selector-title">Repository selector</h2>
+              </div>
+              <label className="filter-control">
+                <span>Visibility</span>
+                <select
+                  aria-label="Repository visibility"
+                  value={repositoryVisibility}
+                  onChange={(event) =>
+                    setRepositoryVisibility(event.target.value as RepositoryVisibility)
+                  }
+                >
+                  <option value="all">All</option>
+                  <option value="public">Public</option>
+                  <option value="private">Private</option>
+                </select>
+              </label>
+            </div>
+
+            <p className="privacy-note">
+              We list repositories available to your GitHub OAuth session so you can choose one
+              project. This step shows metadata such as name, owner type, visibility, default branch,
+              and basic permissions.
+            </p>
+
+            {repositoryState === "loading" ? <p>Loading accessible repositories...</p> : null}
+            {repositoryState === "error" ? (
+              <p className="notice error">{repositoryError ?? "Failed to load repositories."}</p>
+            ) : null}
+            {repositoryState === "loaded" && repositories.length === 0 ? (
+              <p className="empty-state">
+                No repositories were returned for this visibility filter. Try a different filter or
+                confirm the OAuth app has the repository scopes you expect.
+              </p>
+            ) : null}
+
+            {repositories.length > 0 ? (
+              <ul className="repository-list" aria-label="Accessible repositories">
+                {repositories.map((repository) => {
+                  const isSelected = selectedRepository?.id === repository.id;
+
+                  return (
+                    <li key={repository.id} className={isSelected ? "repository selected" : "repository"}>
+                      <button
+                        type="button"
+                        className="repository-button"
+                        aria-pressed={isSelected}
+                        aria-label={`Select ${repository.full_name}`}
+                        onClick={() => setSelectedRepository(repository)}
+                      >
+                        <span className="repository-main">
+                          <span className="repository-name">{repository.full_name}</span>
+                          <span className="repository-description">
+                            {repository.description ?? "No description provided."}
+                          </span>
+                        </span>
+                        <span className="repository-meta">
+                          <span className={repository.private ? "badge private" : "badge public"}>
+                            {repository.private ? "Private" : "Public"}
+                          </span>
+                          <span className="badge">{repository.owner_type}</span>
+                          <span className="badge">Default: {repository.default_branch}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+
+            {selectedRepository ? (
+              <div className="selected-repository">
+                <span className="eyebrow subtle">Selected</span>
+                <p>
+                  <strong>{selectedRepository.full_name}</strong> is ready for the next Stage 2
+                  analysis job bootstrap.
+                </p>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <div className="meta">
           <p>
