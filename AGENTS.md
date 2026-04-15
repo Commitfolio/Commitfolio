@@ -62,6 +62,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 ## Commitfolio Project Contract
 - Product target: ship a public MVP that turns one GitHub repository's activity into a portfolio document with evidence links.
 - Target stack until the repo says otherwise: `apps/frontend` = React + Vite + TypeScript, `apps/backend` = FastAPI, persistence = PostgreSQL, realtime status = SSE.
+- Frontend architecture rule: `apps/frontend` follows the lightweight feature-sliced architecture in `docs/architecture/frontend-code-architecture.md`; new UI work should use `app/`, `features/`, `entities/`, and `shared/` boundaries instead of growing root `App.tsx`.
 - Document-first delivery is mandatory for net-new feature work. Create or update a PRD in `docs/prd/` and an execution checklist in `docs/tasks/` before implementation.
 - Default feature-flow rule: a net-new feature request should automatically enter a plan-first pipeline without waiting for a special command from the user.
 - Feature briefing rule: before starting any feature-development implementation, briefly state in Korean which OMX/project workflow will be used, why it fits, what alternatives were considered or recommended (`default feature flow`, `$plan`, `$ralph`, `$team`, solo execution), which docs/issues/branches will be created or updated, and what verification commands will prove completion.
