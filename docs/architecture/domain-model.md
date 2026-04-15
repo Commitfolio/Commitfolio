@@ -46,6 +46,8 @@ This document captures the first-pass core entities for the MVP. The goal is sta
   - `repository_full_name`
   - `branch`
   - `status`
+  - `current_stage`
+  - `progress_percent`
   - `requested_at`
   - `started_at`
   - `completed_at`
@@ -61,6 +63,20 @@ This document captures the first-pass core entities for the MVP. The goal is sta
   - `source_id`
   - `url`
   - `payload_json`
+  - `created_at`
+
+### AnalysisJobEvent
+- Append-only job progress/event log used as the durable replay source for future SSE
+- Key fields:
+  - `id`
+  - `analysis_job_id`
+  - `sequence`
+  - `event_type` (`job_started`, `progress`, `job_failed`, `job_completed`)
+  - `stage`
+  - `percent`
+  - `message`
+  - `payload_json`
+  - `created_at`
 
 ### PortfolioResult
 - Stored generated result for one completed job
@@ -94,6 +110,7 @@ This document captures the first-pass core entities for the MVP. The goal is sta
 - One `User` starts many `AnalysisJob` rows.
 - One `AnalysisJob` targets one `RepositorySnapshot`.
 - One `AnalysisJob` produces many `AnalysisEvidence` rows.
+- One `AnalysisJob` produces many ordered `AnalysisJobEvent` rows.
 - One `AnalysisJob` produces one or more `PortfolioResult` versions.
 - One `PortfolioResult` has many `PortfolioSectionEvidenceLink` rows.
 
@@ -110,6 +127,7 @@ This document captures the first-pass core entities for the MVP. The goal is sta
 - Store enough evidence to support regeneration without asking the user to re-select everything.
 - Treat the editable result as an artifact derived from evidence, not as the evidence itself.
 - Allow future support for reanalysis and multiple result versions.
+- Treat `analysis_jobs` as the latest status snapshot and `analysis_job_events` as the durable replay log for SSE.
 
 ## Likely MVP Tables
 - `users`
@@ -117,5 +135,6 @@ This document captures the first-pass core entities for the MVP. The goal is sta
 - `repository_snapshots`
 - `analysis_jobs`
 - `analysis_evidence`
+- `analysis_job_events`
 - `portfolio_results`
 - `portfolio_section_evidence_links`

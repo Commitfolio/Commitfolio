@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createAnalysisJob,
+  fetchEvidenceSummary,
   fetchAnalysisJob,
   fetchCurrentUser,
   fetchRepositories,
@@ -8,13 +9,16 @@ import {
   logout,
   type AnalysisJob,
   type AuthenticatedUser,
+  type EvidenceSummary,
   type RepositorySummary,
   type RepositoryVisibility,
+  runAnalysisJob,
 } from "./lib/api";
 
 type SessionState = "loading" | "signed-out" | "signed-in";
 type RepositoryState = "idle" | "loading" | "loaded" | "error";
 type AnalysisJobState = "idle" | "creating" | "created" | "refreshing" | "error";
+type EvidenceState = "idle" | "running" | "loaded" | "error";
 
 function getStatusMessage(search: string): string | null {
   const params = new URLSearchParams(search);
@@ -55,6 +59,9 @@ export default function App() {
   const [analysisJobState, setAnalysisJobState] = useState<AnalysisJobState>("idle");
   const [analysisJob, setAnalysisJob] = useState<AnalysisJob | null>(null);
   const [analysisJobError, setAnalysisJobError] = useState<string | null>(null);
+  const [evidenceState, setEvidenceState] = useState<EvidenceState>("idle");
+  const [evidenceSummary, setEvidenceSummary] = useState<EvidenceSummary | null>(null);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
   const authStartUrl = useMemo(() => getAuthStartUrl(), []);
   const statusMessage = useMemo(() => getStatusMessage(window.location.search), []);
@@ -174,6 +181,12 @@ export default function App() {
       const refreshedJob = await fetchAnalysisJob(analysisJob.job_id);
       setAnalysisJob(refreshedJob);
       setAnalysisJobState("created");
+
+      if (refreshedJob.status === "completed" || evidenceSummary) {
+        const summary = await fetchEvidenceSummary(refreshedJob.job_id);
+        setEvidenceSummary(summary);
+        setEvidenceState("loaded");
+      }
     } catch (error) {
       setAnalysisJobError(
         error instanceof Error ? error.message : "Unknown error while refreshing the analysis job.",
@@ -182,10 +195,40 @@ export default function App() {
     }
   }
 
+  async function handleRunAnalysisJob() {
+    if (!analysisJob) {
+      return;
+    }
+
+    setEvidenceState("running");
+    setEvidenceError(null);
+
+    try {
+      const runResponse = await runAnalysisJob(analysisJob.job_id);
+      setAnalysisJob(runResponse.job);
+      setAnalysisJobState("created");
+      setEvidenceSummary(runResponse.evidence);
+      setEvidenceState("loaded");
+    } catch (error) {
+      setEvidenceError(error instanceof Error ? error.message : "Unknown error while running analysis.");
+      setEvidenceState("error");
+
+      try {
+        const refreshedJob = await fetchAnalysisJob(analysisJob.job_id);
+        setAnalysisJob(refreshedJob);
+      } catch {
+        // Keep the previous job snapshot if the failure status lookup also fails.
+      }
+    }
+  }
+
   function resetAnalysisJob() {
     setAnalysisJobState("idle");
     setAnalysisJob(null);
     setAnalysisJobError(null);
+    setEvidenceState("idle");
+    setEvidenceSummary(null);
+    setEvidenceError(null);
   }
 
   return (
@@ -374,9 +417,43 @@ export default function App() {
                     >
                       {analysisJobState === "refreshing" ? "Refreshing..." : "Refresh status"}
                     </button>
+                    <button
+                      className="button primary"
+                      disabled={evidenceState === "running"}
+                      onClick={handleRunAnalysisJob}
+                      type="button"
+                    >
+                      {evidenceState === "running" ? "Running analysis..." : "Run analysis"}
+                    </button>
+                    {evidenceError ? <p className="notice error">{evidenceError}</p> : null}
+                    {evidenceSummary ? (
+                      <div className="evidence-summary">
+                        <div>
+                          <span className="eyebrow subtle">Evidence</span>
+                          <h3>{evidenceSummary.total_count} item(s) collected</h3>
+                        </div>
+                        <dl className="user-grid">
+                          {Object.entries(evidenceSummary.counts).map(([sourceType, count]) => (
+                            <div key={sourceType}>
+                              <dt>{sourceType}</dt>
+                              <dd>{count}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                        {evidenceSummary.latest_events.length > 0 ? (
+                          <ul className="event-list" aria-label="Latest analysis events">
+                            {evidenceSummary.latest_events.map((event) => (
+                              <li key={event.sequence}>
+                                <strong>#{event.sequence}</strong> {event.message}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <p className="privacy-note">
-                      Stage 2 creates a queued job only. GitHub evidence ingestion and realtime
-                      progress updates start in later stages.
+                      Stage 3 stores bounded GitHub evidence and replayable job events. Realtime
+                      SSE delivery starts in Stage 4.
                     </p>
                   </div>
                 ) : null}

@@ -6,7 +6,12 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.db import init_db
-from app.github_oauth import GitHubOAuthError, GitHubRepository, GitHubRepositoryPage
+from app.github_oauth import (
+    GitHubEvidenceItem,
+    GitHubOAuthError,
+    GitHubRepository,
+    GitHubRepositoryPage,
+)
 from app.main import create_app, get_github_service
 
 
@@ -60,6 +65,49 @@ class FakeGitHubService:
             ],
             next_cursor=None,
         )
+
+    async def collect_repository_evidence(
+        self,
+        access_token: str,
+        *,
+        full_name: str,
+        branch: str,
+    ) -> list[GitHubEvidenceItem]:
+        assert access_token == "access-token"
+        assert full_name == "octocat/commitfolio"
+        assert branch == "main"
+        return [
+            GitHubEvidenceItem(
+                source_type="commit",
+                source_id="abc123",
+                url="https://github.com/octocat/commitfolio/commit/abc123",
+                payload={"sha": "abc123", "message": "Initial commit"},
+            ),
+            GitHubEvidenceItem(
+                source_type="pull_request",
+                source_id="7",
+                url="https://github.com/octocat/commitfolio/pull/7",
+                payload={"number": 7, "title": "Add API"},
+            ),
+            GitHubEvidenceItem(
+                source_type="issue",
+                source_id="8",
+                url="https://github.com/octocat/commitfolio/issues/8",
+                payload={"number": 8, "title": "Track work"},
+            ),
+            GitHubEvidenceItem(
+                source_type="review",
+                source_id="7:11",
+                url="https://github.com/octocat/commitfolio/pull/7#pullrequestreview-11",
+                payload={"pull_number": 7, "review_id": 11},
+            ),
+            GitHubEvidenceItem(
+                source_type="changed_file",
+                source_id="7:apps/backend/app/main.py",
+                url="https://github.com/octocat/commitfolio/blob/main/apps/backend/app/main.py",
+                payload={"pull_number": 7, "filename": "apps/backend/app/main.py"},
+            ),
+        ]
 
 
 def create_test_client() -> TestClient:
@@ -343,3 +391,102 @@ def test_analysis_job_lookup_returns_not_found_for_unknown_job() -> None:
             "message": "Analysis job was not found.",
         }
     }
+
+
+def create_authenticated_job(client: TestClient) -> str:
+    start_response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+    state = start_response.headers["location"].split("state=")[1]
+    client.get(
+        f"/api/v1/auth/github/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+    create_response = client.post(
+        "/api/v1/analysis-jobs",
+        json={
+            "repository_full_name": "octocat/commitfolio",
+            "branch": "main",
+            "github_repo_id": 456,
+            "private": True,
+            "owner_type": "Organization",
+            "default_branch": "main",
+            "html_url": "https://github.com/octocat/commitfolio",
+            "description": "Portfolio generator",
+        },
+    )
+    return str(create_response.json()["job_id"])
+
+
+def test_analysis_job_run_collects_evidence_and_events() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+
+    run_response = client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+
+    assert run_response.status_code == 200
+    payload = run_response.json()
+    assert payload["job"]["status"] == "completed"
+    assert payload["job"]["progress"] == {"stage": "completed", "percent": 100}
+    assert payload["evidence"]["total_count"] == 5
+    assert payload["evidence"]["counts"] == {
+        "changed_file": 1,
+        "commit": 1,
+        "issue": 1,
+        "pull_request": 1,
+        "review": 1,
+    }
+    assert [event["sequence"] for event in payload["evidence"]["latest_events"]] == list(range(1, 8))
+    assert payload["evidence"]["latest_events"][-1]["event_type"] == "job_completed"
+
+    lookup_response = client.get(f"/api/v1/analysis-jobs/{job_id}")
+
+    assert lookup_response.status_code == 200
+    assert lookup_response.json()["status"] == "completed"
+
+
+def test_analysis_job_evidence_summary_requires_owner_job() -> None:
+    client = create_test_client()
+
+    response = client.get("/api/v1/analysis-jobs/job_missing/evidence")
+
+    assert response.status_code == 401
+
+
+def test_analysis_job_run_persists_failed_status_on_github_error() -> None:
+    class FailingEvidenceGitHubService(FakeGitHubService):
+        async def collect_repository_evidence(
+            self,
+            access_token: str,
+            *,
+            full_name: str,
+            branch: str,
+        ) -> list[GitHubEvidenceItem]:
+            raise GitHubOAuthError("commits_lookup_failed", "GitHub evidence lookup failed.")
+
+    app = create_app(
+        Settings(
+            github_client_id="test-client-id",
+            github_client_secret="test-client-secret",
+            github_callback_url="http://testserver/api/v1/auth/github/callback",
+            frontend_app_url="http://frontend.test",
+            session_secret="test-session-secret",
+            cors_origin="http://frontend.test",
+            database_url="sqlite+pysqlite:///:memory:",
+        )
+    )
+    init_db(app.state.db_engine)
+    app.dependency_overrides[get_github_service] = lambda: FailingEvidenceGitHubService()
+    client = TestClient(app)
+    job_id = create_authenticated_job(client)
+
+    run_response = client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+    lookup_response = client.get(f"/api/v1/analysis-jobs/{job_id}")
+
+    assert run_response.status_code == 502
+    assert run_response.json() == {
+        "error": {
+            "code": "commits_lookup_failed",
+            "message": "GitHub evidence lookup failed.",
+        }
+    }
+    assert lookup_response.json()["status"] == "failed"
+    assert lookup_response.json()["failure_reason"] == "GitHub evidence lookup failed."

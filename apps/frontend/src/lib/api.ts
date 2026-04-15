@@ -42,6 +42,28 @@ export type AnalysisJob = {
   failure_reason: string | null;
 };
 
+export type AnalysisJobEvent = {
+  sequence: number;
+  event_type: string;
+  stage: string;
+  percent: number;
+  message: string;
+  payload_json: Record<string, unknown>;
+  created_at: string;
+};
+
+export type EvidenceSummary = {
+  job_id: string;
+  total_count: number;
+  counts: Record<string, number>;
+  latest_events: AnalysisJobEvent[];
+};
+
+export type AnalysisRunResponse = {
+  job: AnalysisJob;
+  evidence: EvidenceSummary;
+};
+
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -116,6 +138,31 @@ export async function fetchAnalysisJob(jobId: string): Promise<AnalysisJob> {
   }
 
   return (await response.json()) as AnalysisJob;
+}
+
+export async function runAnalysisJob(jobId: string): Promise<AnalysisRunResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analysis-jobs/${jobId}/run`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to run analysis job."));
+  }
+
+  return (await response.json()) as AnalysisRunResponse;
+}
+
+export async function fetchEvidenceSummary(jobId: string): Promise<EvidenceSummary> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analysis-jobs/${jobId}/evidence`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch evidence summary."));
+  }
+
+  return (await response.json()) as EvidenceSummary;
 }
 
 export async function logout(): Promise<void> {
