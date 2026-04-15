@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Literal, Optional, TypedDict, Union
@@ -8,7 +10,7 @@ import secrets
 
 from fastapi import Depends, FastAPI, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -121,6 +123,12 @@ class EvidenceSummaryResponse(BaseModel):
 class AnalysisRunResponse(BaseModel):
     job: AnalysisJobResponse
     evidence: EvidenceSummaryResponse
+
+
+TERMINAL_JOB_EVENTS = {"job_completed", "job_failed"}
+SSE_POLL_INTERVAL_SECONDS = 0.1
+SSE_HEARTBEAT_INTERVAL_SECONDS = 1.0
+SSE_MAX_STREAM_SECONDS = 30.0
 
 
 def build_frontend_redirect(frontend_app_url: str, **query: str) -> str:
@@ -473,7 +481,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             percent=0,
             message="Analysis job started.",
         )
-        db.flush()
+        db.commit()
+        db.refresh(job)
 
         try:
             evidence_items = await github.collect_repository_evidence(
@@ -565,6 +574,61 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
         return build_evidence_summary(db, job)
 
+    @app.get(
+        "/api/v1/analysis-jobs/{job_id}/events",
+        response_model=None,
+        responses={401: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope}},
+    )
+    async def stream_analysis_job_events(
+        request: Request,
+        job_id: str,
+        after: Optional[int] = Query(default=None, ge=0),
+        db: Session = Depends(get_db_session),
+    ) -> Union[StreamingResponse, JSONResponse]:
+        user = request.session.get("user")
+
+        if not user:
+            return build_error_response(
+                status.HTTP_401_UNAUTHORIZED,
+                "unauthenticated",
+                "Authentication required.",
+            )
+
+        after_sequence = resolve_event_cursor(after, request.headers.get("last-event-id"))
+        if after_sequence is None:
+            return build_error_response(
+                status.HTTP_400_BAD_REQUEST,
+                "invalid_event_cursor",
+                "Event replay cursor is invalid.",
+            )
+
+        user_id = str(user["id"])
+        job = get_owned_analysis_job(db, user_id, job_id)
+
+        if not job:
+            return build_error_response(
+                status.HTTP_404_NOT_FOUND,
+                "analysis_job_not_found",
+                "Analysis job was not found.",
+            )
+
+        return StreamingResponse(
+            stream_job_events(
+                request,
+                request.app.state.db_session_factory,
+                job.id,
+                user_id,
+                after_sequence,
+                build_analysis_job_response(job),
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     @app.post("/api/v1/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
     async def logout(request: Request) -> Response:
         github_token_id = request.session.get("github_token_id")
@@ -615,6 +679,107 @@ def get_owned_analysis_job(db: Session, user_id: str, job_id: str) -> Optional[A
             AnalysisJob.user_id == user_id,
         )
     )
+
+
+def resolve_event_cursor(after: Optional[int], last_event_id: Optional[str]) -> Optional[int]:
+    if after is not None:
+        return after
+
+    if not last_event_id:
+        return 0
+
+    try:
+        cursor = int(last_event_id)
+    except ValueError:
+        return None
+
+    return cursor if cursor >= 0 else None
+
+
+async def stream_job_events(
+    request: Request,
+    session_factory,
+    job_id: str,
+    user_id: str,
+    after_sequence: int,
+    snapshot: AnalysisJobResponse,
+) -> AsyncIterator[str]:
+    yield format_sse(
+        "snapshot",
+        {
+            "job": snapshot.model_dump(),
+            "after": after_sequence,
+        },
+    )
+
+    last_sequence = after_sequence
+    heartbeat_elapsed = 0.0
+    stream_elapsed = 0.0
+
+    while not await request.is_disconnected():
+        with session_factory() as stream_db:
+            job = get_owned_analysis_job(stream_db, user_id, job_id)
+            events = stream_db.scalars(
+                select(AnalysisJobEvent)
+                .where(
+                    AnalysisJobEvent.analysis_job_id == job_id,
+                    AnalysisJobEvent.sequence > last_sequence,
+                )
+                .order_by(AnalysisJobEvent.sequence)
+                .limit(50)
+            ).all()
+
+        if events:
+            heartbeat_elapsed = 0.0
+            for event in events:
+                last_sequence = event.sequence
+                yield format_sse(event.event_type, build_event_payload(job_id, event), event.sequence)
+
+                if event.event_type in TERMINAL_JOB_EVENTS:
+                    return
+            continue
+
+        if job and job.status in {"completed", "failed"}:
+            return
+
+        heartbeat_elapsed += SSE_POLL_INTERVAL_SECONDS
+        stream_elapsed += SSE_POLL_INTERVAL_SECONDS
+        if heartbeat_elapsed >= SSE_HEARTBEAT_INTERVAL_SECONDS:
+            heartbeat_elapsed = 0.0
+            yield format_sse(
+                "heartbeat",
+                {
+                    "job_id": job_id,
+                    "after": last_sequence,
+                },
+            )
+
+        if stream_elapsed >= SSE_MAX_STREAM_SECONDS:
+            return
+
+        await asyncio.sleep(SSE_POLL_INTERVAL_SECONDS)
+
+
+def format_sse(event_type: str, payload: dict, event_id: Optional[int] = None) -> str:
+    lines = []
+    if event_id is not None:
+        lines.append(f"id: {event_id}")
+    lines.append(f"event: {event_type}")
+    lines.append(f"data: {json.dumps(payload, separators=(',', ':'))}")
+    return "\n".join(lines) + "\n\n"
+
+
+def build_event_payload(job_id: str, event: AnalysisJobEvent) -> dict:
+    return {
+        "job_id": job_id,
+        "sequence": event.sequence,
+        "event_type": event.event_type,
+        "stage": event.stage,
+        "percent": event.percent,
+        "message": event.message,
+        "payload_json": event.payload_json,
+        "created_at": event.created_at.isoformat(),
+    }
 
 
 def clear_job_run_artifacts(db: Session, job: AnalysisJob) -> None:

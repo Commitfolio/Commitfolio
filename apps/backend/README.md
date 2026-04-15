@@ -76,3 +76,18 @@ Stage 3 runs bounded GitHub evidence ingestion synchronously for the MVP baselin
 Jobs transition from `queued` to `running` and then `completed` or `failed`. Stage 4 should expose
 the durable event log through SSE; the event log, not the live SSE connection, is the source of truth
 for replay.
+
+## Stage 4 SSE progress replay
+
+Stage 4 exposes the durable event log over SSE:
+
+- `GET /api/v1/analysis-jobs/{job_id}/events?after=<sequence>`
+  - Requires a signed-in session.
+  - Sends a `snapshot` event first.
+  - Replays `analysis_job_events` with `sequence > after`.
+  - Uses `Last-Event-ID` when `after` is absent.
+  - Emits heartbeat events while waiting for new DB events.
+  - Closes on `job_completed` or `job_failed`.
+
+SSE is a delivery channel only. `analysis_jobs` remains the current-state snapshot and
+`analysis_job_events` remains the replay source of truth.

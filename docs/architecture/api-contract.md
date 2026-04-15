@@ -220,11 +220,29 @@ This document defines the first-pass API shape for the FastAPI backend. Route na
 ### `GET /api/v1/analysis-jobs/{job_id}/events`
 - Purpose: stream progress events over SSE
 - Content type: `text/event-stream`
+- Query params:
+  - `after`: optional last seen `analysis_job_events.sequence`; only events with greater sequence are replayed
+- Header support:
+  - `Last-Event-ID`: used as the replay cursor when `after` is absent
+- Stream behavior:
+  - Sends a `snapshot` event first with the current job response shape.
+  - Replays durable `analysis_job_events` after the requested cursor.
+  - Polls the database briefly for new events and emits `heartbeat` while waiting.
+  - Closes after `job_completed` or `job_failed`, or after the bounded MVP stream window.
 - Event examples:
+  - `snapshot`
   - `job_started`
   - `progress`
   - `job_failed`
   - `job_completed`
+  - `heartbeat`
+- Event format example:
+
+```text
+id: 7
+event: job_completed
+data: {"job_id":"job_123","sequence":7,"stage":"completed","percent":100}
+```
 
 ## Portfolio Results
 

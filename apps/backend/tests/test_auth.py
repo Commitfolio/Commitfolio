@@ -443,6 +443,54 @@ def test_analysis_job_run_collects_evidence_and_events() -> None:
     assert lookup_response.json()["status"] == "completed"
 
 
+def test_analysis_job_events_stream_replays_after_cursor() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+
+    response = client.get(f"/api/v1/analysis-jobs/{job_id}/events?after=6")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    body = response.text
+    assert "event: snapshot" in body
+    assert "id: 7" in body
+    assert "event: job_completed" in body
+    assert "id: 6" not in body
+
+
+def test_analysis_job_events_stream_accepts_last_event_id_header() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+
+    response = client.get(
+        f"/api/v1/analysis-jobs/{job_id}/events",
+        headers={"Last-Event-ID": "6"},
+    )
+
+    assert response.status_code == 200
+    assert "id: 7" in response.text
+
+
+def test_analysis_job_events_stream_rejects_invalid_last_event_id() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+
+    response = client.get(
+        f"/api/v1/analysis-jobs/{job_id}/events",
+        headers={"Last-Event-ID": "not-a-number"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": {
+            "code": "invalid_event_cursor",
+            "message": "Event replay cursor is invalid.",
+        }
+    }
+
+
 def test_analysis_job_evidence_summary_requires_owner_job() -> None:
     client = create_test_client()
 
