@@ -312,6 +312,16 @@ h1 {
   line-height: 1.5;
 }
 
+.stream-status {
+  width: fit-content;
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
 @media (max-width: 640px) {
   .shell {
     padding: 1rem;
