@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.dependencies import get_github_service
-from app.api.routes import analysis_events, analysis_jobs, auth, repositories
+from app.api.routes import analysis_events, analysis_jobs, auth, repositories, results
 from app.config import Settings, get_settings
 from app.db import create_db_engine, create_session_factory, init_db
 
@@ -50,6 +50,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app.include_router(repositories.router)
     app.include_router(analysis_jobs.router)
     app.include_router(analysis_events.router)
+    app.include_router(results.router)
 
     return app
 

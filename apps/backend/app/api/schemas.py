@@ -99,3 +99,41 @@ class EvidenceSummaryResponse(BaseModel):
 class AnalysisRunResponse(BaseModel):
     job: AnalysisJobResponse
     evidence: EvidenceSummaryResponse
+
+
+class PortfolioEvidenceLinkResponse(BaseModel):
+    section_key: str
+    label: str
+    url: str
+    evidence_id: str
+
+
+class PortfolioResultResponse(BaseModel):
+    result_id: str
+    analysis_job_id: str
+    repository_full_name: str
+    version: int
+    headline: str
+    project_overview: str
+    role_summary: str
+    key_contributions: list[str]
+    tech_stack: list[str]
+    evidence_summary: str
+    interview_questions: list[str]
+    evidence_links: list[PortfolioEvidenceLinkResponse]
+    created_at: str
+    updated_at: str
+
+
+class PortfolioResultListItemResponse(BaseModel):
+    result_id: str
+    analysis_job_id: str
+    repository_full_name: str
+    headline: str
+    version: int
+    created_at: str
+    updated_at: str
+
+
+class PortfolioResultListResponse(BaseModel):
+    items: list[PortfolioResultListItemResponse]

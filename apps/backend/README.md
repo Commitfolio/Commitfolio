@@ -91,3 +91,21 @@ Stage 4 exposes the durable event log over SSE:
 
 SSE is a delivery channel only. `analysis_jobs` remains the current-state snapshot and
 `analysis_job_events` remains the replay source of truth.
+
+## Stage 5 portfolio results
+
+Stage 5 generates a deterministic portfolio draft from stored analysis evidence:
+
+- `POST /api/v1/analysis-jobs/{job_id}/result`
+  - Requires a signed-in session.
+  - Requires the job to be owned by the current user and completed.
+  - Generates and stores a rule-based `PortfolioResult` without OpenAI.
+  - Updates `analysis_jobs.result_id` to the latest generated result.
+- `GET /api/v1/results`
+  - Returns recent portfolio results for the current user.
+- `GET /api/v1/results/{result_id}`
+  - Returns a stored result, sections, and evidence links.
+
+The result shape includes headline, project overview, role summary, key contributions, tech stack,
+evidence summary, interview questions, and section-level evidence links. Editing, regenerate, and PDF
+export belong to later stages.

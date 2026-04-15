@@ -84,6 +84,7 @@ This document captures the first-pass core entities for the MVP. The goal is sta
   - `id`
   - `analysis_job_id`
   - `user_id`
+  - `repository_full_name`
   - `version`
   - `headline`
   - `project_overview`
@@ -92,6 +93,7 @@ This document captures the first-pass core entities for the MVP. The goal is sta
   - `tech_stack`
   - `evidence_summary`
   - `interview_questions`
+  - `created_at`
   - `updated_at`
 
 ### PortfolioSectionEvidenceLink
@@ -103,6 +105,11 @@ This document captures the first-pass core entities for the MVP. The goal is sta
   - `evidence_id`
   - `label`
   - `url`
+
+## Current Stage 5 Persistence Notes
+- `analysis_jobs.result_id` points at the latest generated `PortfolioResult`.
+- Stage 5 creates version `1` rule-based results only; editing and regeneration are Stage 6 concerns.
+- `PortfolioSectionEvidenceLink` stores section-level links back to `AnalysisEvidence` so generated text remains traceable.
 
 ## Relationships
 - One `User` has one or more `ConnectedGitHubAccount` rows over time.
