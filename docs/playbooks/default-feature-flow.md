@@ -55,3 +55,4 @@ Expected system behavior:
 
 ## Related Playbooks
 - For the stricter GitHub issue → branch → PR operating lane, use `docs/playbooks/github-issue-first-flow.md`.
+- For roadmap-driven work where the human says "next stage" instead of naming a feature, use `docs/prd/mvp-feature-roadmap.md`.

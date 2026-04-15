@@ -8,6 +8,7 @@
 !.codex/prompts/
 !.codex/prompts/**
 .idea/
+.DS_Store
 apps/frontend/node_modules/
 apps/frontend/dist/
 apps/backend/.venv/
