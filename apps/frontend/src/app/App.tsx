@@ -9,6 +9,7 @@ import { useRepositorySelector } from "../features/repository-selector/useReposi
 import { ResultEditor } from "../features/result-editor/ResultEditor";
 import { RecentResults } from "../features/result-viewer/RecentResults";
 import { ResultDocument } from "../features/result-viewer/ResultDocument";
+import { ResultExportActions } from "../features/result-viewer/ResultExportActions";
 import { useResultViewer } from "../features/result-viewer/useResultViewer";
 import { fetchCurrentUser, getAuthStartUrl, logout } from "../shared/api/commitfolio-api";
 
@@ -66,6 +67,10 @@ export default function App() {
     } finally {
       setLogoutPending(false);
     }
+  }
+
+  function handlePrintResult() {
+    window.print();
   }
 
   return (
@@ -149,8 +154,8 @@ export default function App() {
             {results.resultError ? <p className="notice error">{results.resultError}</p> : null}
             <RecentResults items={results.recentResults} onSelectResult={results.handleSelectResult} />
             {results.result ? (
-              <>
-                <div className="result-actions">
+              <div className="printable-result">
+                <div className="result-actions no-print">
                   <button
                     className="button secondary"
                     disabled={results.regeneratePending}
@@ -160,13 +165,16 @@ export default function App() {
                     {results.regeneratePending ? "Regenerating..." : "Regenerate result"}
                   </button>
                 </div>
+                <ResultExportActions onPrint={handlePrintResult} />
                 <ResultDocument result={results.result} />
-                <ResultEditor
-                  result={results.result}
-                  saving={results.savePending}
-                  onSave={(payload) => void results.handleSaveResult(payload)}
-                />
-              </>
+                <div className="no-print">
+                  <ResultEditor
+                    result={results.result}
+                    saving={results.savePending}
+                    onSave={(payload) => void results.handleSaveResult(payload)}
+                  />
+                </div>
+              </div>
             ) : (
               <p className="empty-state">
                 Run analysis, then generate a portfolio result to see the first editable draft.
