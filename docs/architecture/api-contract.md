@@ -307,7 +307,7 @@ data: {"job_id":"job_123","sequence":7,"stage":"completed","percent":100}
 
 ### `PATCH /api/v1/results/{result_id}`
 - Purpose: persist user edits to generated text
-- Status: planned for Stage 6
+- Status: implemented in Stage 6
 - Request example:
 
 ```json
@@ -319,7 +319,8 @@ data: {"job_id":"job_123","sequence":7,"stage":"completed","percent":100}
 
 ### `POST /api/v1/results/{result_id}/regenerate`
 - Purpose: rerun generation using stored evidence
-- Status: planned for Stage 6
+- Status: implemented in Stage 6
+- Response: same result shape as `GET /api/v1/results/{result_id}` with incremented version.
 
 ### `GET /api/v1/results/{result_id}/download.pdf`
 - Purpose: return a PDF export

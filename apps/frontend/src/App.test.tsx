@@ -463,6 +463,96 @@ describe("App", () => {
           ],
         }),
       },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          result_id: "res_123",
+          analysis_job_id: "job_123",
+          repository_full_name: "octocat/commitfolio",
+          version: 1,
+          headline: "Updated portfolio headline",
+          project_overview: "Project overview text",
+          role_summary: "Role summary text",
+          key_contributions: ["Built the API"],
+          tech_stack: ["Python", "React"],
+          evidence_summary: "commit 1개",
+          interview_questions: ["What was the key decision?"],
+          evidence_links: [
+            {
+              section_key: "key_contributions",
+              label: "commit: Initial commit",
+              url: "https://github.com/octocat/commitfolio/commit/abc123",
+              evidence_id: "ev_123",
+            },
+          ],
+          created_at: "2026-04-15T00:00:00Z",
+          updated_at: "2026-04-15T00:01:00Z",
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              result_id: "res_123",
+              analysis_job_id: "job_123",
+              repository_full_name: "octocat/commitfolio",
+              headline: "Updated portfolio headline",
+              version: 1,
+              created_at: "2026-04-15T00:00:00Z",
+              updated_at: "2026-04-15T00:01:00Z",
+            },
+          ],
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          result_id: "res_456",
+          analysis_job_id: "job_123",
+          repository_full_name: "octocat/commitfolio",
+          version: 2,
+          headline: "Regenerated portfolio headline",
+          project_overview: "Project overview text",
+          role_summary: "Role summary text",
+          key_contributions: ["Built the API"],
+          tech_stack: ["Python", "React"],
+          evidence_summary: "commit 1개",
+          interview_questions: ["What was the key decision?"],
+          evidence_links: [],
+          created_at: "2026-04-15T00:02:00Z",
+          updated_at: "2026-04-15T00:02:00Z",
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              result_id: "res_456",
+              analysis_job_id: "job_123",
+              repository_full_name: "octocat/commitfolio",
+              headline: "Regenerated portfolio headline",
+              version: 2,
+              created_at: "2026-04-15T00:02:00Z",
+              updated_at: "2026-04-15T00:02:00Z",
+            },
+            {
+              result_id: "res_123",
+              analysis_job_id: "job_123",
+              repository_full_name: "octocat/commitfolio",
+              headline: "Updated portfolio headline",
+              version: 1,
+              created_at: "2026-04-15T00:00:00Z",
+              updated_at: "2026-04-15T00:01:00Z",
+            },
+          ],
+        }),
+      },
     );
 
     render(<App />);
@@ -489,11 +579,26 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "octocat/commitfolio portfolio draft" })).toBeInTheDocument();
     });
-    expect(screen.getByText("Built the API")).toBeInTheDocument();
+    expect(screen.getAllByText("Built the API").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "commit: Initial commit" })).toHaveAttribute(
       "href",
       "https://github.com/octocat/commitfolio/commit/abc123",
     );
+
+    await userEvent.clear(screen.getByLabelText("Headline"));
+    await userEvent.type(screen.getByLabelText("Headline"), "Updated portfolio headline");
+    await userEvent.click(screen.getByRole("button", { name: "Save result edits" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Updated portfolio headline" })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Regenerate result" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Regenerated portfolio headline" })).toBeInTheDocument();
+    });
+    expect(screen.getByText(/version 2/i)).toBeInTheDocument();
   });
 
   it("subscribes to analysis progress with EventSource and stores the last sequence", async () => {

@@ -10,8 +10,9 @@ from app.api.schemas import (
     PortfolioResultListItemResponse,
     PortfolioResultListResponse,
     PortfolioResultResponse,
+    PortfolioResultUpdateRequest,
 )
-from app.models import AnalysisEvidence, AnalysisJob, PortfolioResult
+from app.models import AnalysisEvidence, AnalysisJob, PortfolioResult, utc_now
 from app.repositories.analysis_jobs import AnalysisJobRepository
 from app.repositories.results import PortfolioResultRepository
 
@@ -83,6 +84,67 @@ class PortfolioResultService:
     def get_result(self, user_id: str, result_id: str) -> Optional[PortfolioResultResponse]:
         result = self.results.get_owned_result(user_id, result_id)
         return self.build_result_response(result) if result else None
+
+    def update_result(
+        self,
+        user_id: str,
+        result_id: str,
+        payload: PortfolioResultUpdateRequest,
+    ) -> Optional[PortfolioResultResponse]:
+        result = self.results.get_owned_result(user_id, result_id)
+        if not result:
+            return None
+
+        update_data = payload.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(result, field, value)
+        result.updated_at = utc_now()
+        self.results.commit()
+        self.results.refresh_result(result)
+        return self.build_result_response(result)
+
+    def regenerate_result(self, user_id: str, result_id: str) -> Optional[PortfolioResultResponse]:
+        source_result = self.results.get_owned_result(user_id, result_id)
+        if not source_result:
+            return None
+
+        job = self.analysis_jobs.get_owned_job(user_id, source_result.analysis_job_id)
+        if not job or job.status != "completed":
+            return None
+
+        evidence = self.results.list_evidence_for_job(job.id)
+        draft = build_result_draft(job, evidence)
+        next_version = self.results.get_max_version_for_job(job.id) + 1
+        result = self.results.add_result(
+            analysis_job_id=job.id,
+            user_id=user_id,
+            repository_full_name=job.repository_full_name,
+            headline=draft.headline,
+            project_overview=draft.project_overview,
+            role_summary=draft.role_summary,
+            key_contributions=draft.key_contributions,
+            tech_stack=draft.tech_stack,
+            evidence_summary=draft.evidence_summary,
+            interview_questions=draft.interview_questions,
+            version=next_version,
+        )
+        self.results.commit()
+        self.results.refresh_result(result)
+
+        for section_key, section_evidence in pick_section_evidence(evidence).items():
+            for item in section_evidence:
+                self.results.add_evidence_link(
+                    result=result,
+                    evidence=item,
+                    section_key=section_key,
+                    label=build_evidence_label(item),
+                    url=item.url,
+                )
+
+        job.result_id = result.id
+        self.results.commit()
+        self.results.refresh_result(result)
+        return self.build_result_response(result)
 
     @staticmethod
     def build_result_response(result: PortfolioResult) -> PortfolioResultResponse:

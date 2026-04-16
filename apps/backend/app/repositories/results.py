@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
@@ -46,6 +46,7 @@ class PortfolioResultRepository:
         tech_stack: list[str],
         evidence_summary: str,
         interview_questions: list[str],
+        version: int = 1,
     ) -> PortfolioResult:
         now = utc_now()
         result = PortfolioResult(
@@ -53,7 +54,7 @@ class PortfolioResultRepository:
             analysis_job_id=analysis_job_id,
             user_id=user_id,
             repository_full_name=repository_full_name,
-            version=1,
+            version=version,
             headline=headline,
             project_overview=project_overview,
             role_summary=role_summary,
@@ -86,6 +87,18 @@ class PortfolioResultRepository:
         )
         self.db.add(link)
         return link
+
+
+
+    def get_max_version_for_job(self, analysis_job_id: str) -> int:
+        return int(
+            self.db.scalar(
+                select(func.max(PortfolioResult.version)).where(
+                    PortfolioResult.analysis_job_id == analysis_job_id,
+                )
+            )
+            or 0
+        )
 
     def get_owned_result(self, user_id: str, result_id: str) -> Optional[PortfolioResult]:
         return self.db.scalar(

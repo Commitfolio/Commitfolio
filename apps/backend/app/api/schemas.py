@@ -137,3 +137,13 @@ class PortfolioResultListItemResponse(BaseModel):
 
 class PortfolioResultListResponse(BaseModel):
     items: list[PortfolioResultListItemResponse]
+
+
+class PortfolioResultUpdateRequest(BaseModel):
+    headline: Optional[str] = None
+    project_overview: Optional[str] = None
+    role_summary: Optional[str] = None
+    key_contributions: Optional[list[str]] = None
+    tech_stack: Optional[list[str]] = None
+    evidence_summary: Optional[str] = None
+    interview_questions: Optional[list[str]] = None

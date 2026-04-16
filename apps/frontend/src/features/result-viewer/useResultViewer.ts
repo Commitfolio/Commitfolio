@@ -8,6 +8,9 @@ import {
   fetchPortfolioResult,
   fetchPortfolioResults,
   generatePortfolioResult,
+  regeneratePortfolioResult,
+  type PortfolioResultUpdateRequest,
+  updatePortfolioResult,
 } from "../../shared/api/commitfolio-api";
 
 export function useResultViewer() {
@@ -15,6 +18,8 @@ export function useResultViewer() {
   const [resultError, setResultError] = useState<string | null>(null);
   const [result, setResult] = useState<PortfolioResult | null>(null);
   const [recentResults, setRecentResults] = useState<PortfolioResultListItem[]>([]);
+  const [savePending, setSavePending] = useState(false);
+  const [regeneratePending, setRegeneratePending] = useState(false);
 
   async function handleGenerateResult(jobId: string) {
     setResultState("generating");
@@ -54,6 +59,50 @@ export function useResultViewer() {
     }
   }
 
+
+
+  async function handleSaveResult(payload: PortfolioResultUpdateRequest) {
+    if (!result) {
+      return;
+    }
+
+    setSavePending(true);
+    setResultError(null);
+
+    try {
+      const updated = await updatePortfolioResult(result.result_id, payload);
+      setResult(updated);
+      setResultState("loaded");
+      await loadRecentResults();
+    } catch (error) {
+      setResultError(error instanceof Error ? error.message : "Unknown error while saving result.");
+      setResultState("error");
+    } finally {
+      setSavePending(false);
+    }
+  }
+
+  async function handleRegenerateResult() {
+    if (!result) {
+      return;
+    }
+
+    setRegeneratePending(true);
+    setResultError(null);
+
+    try {
+      const regenerated = await regeneratePortfolioResult(result.result_id);
+      setResult(regenerated);
+      setResultState("loaded");
+      await loadRecentResults();
+    } catch (error) {
+      setResultError(error instanceof Error ? error.message : "Unknown error while regenerating result.");
+      setResultState("error");
+    } finally {
+      setRegeneratePending(false);
+    }
+  }
+
   const resetResult = useCallback(() => {
     setResultState("idle");
     setResultError(null);
@@ -63,12 +112,16 @@ export function useResultViewer() {
 
   return {
     handleGenerateResult,
+    handleRegenerateResult,
+    handleSaveResult,
     handleSelectResult,
     loadRecentResults,
     recentResults,
+    regeneratePending,
     resetResult,
     result,
     resultError,
     resultState,
+    savePending,
   };
 }

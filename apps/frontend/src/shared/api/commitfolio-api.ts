@@ -269,3 +269,46 @@ export async function fetchPortfolioResults(): Promise<PortfolioResultList> {
 
   return (await response.json()) as PortfolioResultList;
 }
+
+export type PortfolioResultUpdateRequest = {
+  headline?: string;
+  project_overview?: string;
+  role_summary?: string;
+  key_contributions?: string[];
+  tech_stack?: string[];
+  evidence_summary?: string;
+  interview_questions?: string[];
+};
+
+export async function updatePortfolioResult(
+  resultId: string,
+  payload: PortfolioResultUpdateRequest,
+): Promise<PortfolioResult> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/results/${resultId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to update portfolio result."));
+  }
+
+  return (await response.json()) as PortfolioResult;
+}
+
+export async function regeneratePortfolioResult(resultId: string): Promise<PortfolioResult> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/results/${resultId}/regenerate`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to regenerate portfolio result."));
+  }
+
+  return (await response.json()) as PortfolioResult;
+}
