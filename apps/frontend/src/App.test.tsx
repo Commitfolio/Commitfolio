@@ -352,7 +352,7 @@ describe("App", () => {
 
 
 
-  it("generates and renders a portfolio result", async () => {
+  it("generates, renders, and exports a portfolio result", async () => {
     mockFetchSequence(
       {
         status: 200,
@@ -589,6 +589,12 @@ describe("App", () => {
       "href",
       "https://github.com/octocat/commitfolio/commit/abc123",
     );
+    expect(screen.getByText(/Save as PDF/i)).toBeInTheDocument();
+
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    await userEvent.click(screen.getByRole("button", { name: "PDF로 저장/출력" }));
+    expect(printSpy).toHaveBeenCalledTimes(1);
+    printSpy.mockRestore();
 
     await userEvent.clear(screen.getByLabelText("Headline"));
     await userEvent.type(screen.getByLabelText("Headline"), "Updated portfolio headline");
