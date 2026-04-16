@@ -11,6 +11,8 @@ This is the strongest harness path for this repo. The human should be able to sa
 - The system should continue into implementation by default.
 - The system should only pause for ambiguity, destructive action, or explicit approval gates.
 - 에이전트가 작성하는 PR 제목/본문, issue 설명, release notes, task completion notes, 사용자-facing 요약은 기본적으로 한국어로 작성한다. 영어 기술 용어, command/API/code identifier, GitHub 자동화 keyword는 필요한 경우 허용한다.
+- 앞으로 Commitfolio 작업 브리핑에는 `madmax` 실행 규칙을 포함한다. 새 OMX/Codex 런타임 세션은 기본적으로 `omx --madmax` 또는 해당 런타임 명령의 `--madmax` 조합으로 시작한다.
+- 현재 세션이 이미 full-access/equivalent 권한이면 재실행하지 말고 "madmax 규칙 충족"으로 보고한 뒤 계속한다. `omx --madmode`는 사용하지 않는다.
 
 ## Automatic Pipeline
 1. Interpret the request and derive a short feature slug.
@@ -69,6 +71,7 @@ Expected system behavior:
 - Do not dump the full plan repeatedly.
 - Keep progress updates short.
 - End with a Korean evidence summary: changed files, verification run, remaining risks.
+- If the work touches external consoles, secrets, DB, deployment, OAuth, billing, or domains, include a concrete "사용자 액션" section that lists what the human must do, where to do it, what env names are needed, and what logs/URLs Codex needs back. Use `docs/playbooks/operator-deployment-actions.md` as the baseline for DB/deploy/OAuth actions.
 
 ## Related Playbooks
 - For the stricter GitHub issue → branch → PR operating lane, use `docs/playbooks/github-issue-first-flow.md`.
