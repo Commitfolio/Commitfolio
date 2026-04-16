@@ -31,7 +31,7 @@ export function useResultViewer() {
       setResultState("loaded");
       await loadRecentResults();
     } catch (error) {
-      setResultError(error instanceof Error ? error.message : "Unknown error while generating result.");
+      setResultError(error instanceof Error ? error.message : "결과를 생성하는 중 알 수 없는 오류가 발생했습니다.");
       setResultState("error");
     }
   }
@@ -41,7 +41,7 @@ export function useResultViewer() {
       const response = await fetchPortfolioResults();
       setRecentResults(response.items);
     } catch {
-      // Recent results are supplemental; keep the main flow usable if listing fails.
+      // 최근 결과 목록은 보조 기능이므로 실패해도 핵심 흐름은 유지한다.
     }
   }
 
@@ -54,7 +54,7 @@ export function useResultViewer() {
       setResult(selected);
       setResultState("loaded");
     } catch (error) {
-      setResultError(error instanceof Error ? error.message : "Unknown error while loading result.");
+      setResultError(error instanceof Error ? error.message : "결과를 불러오는 중 알 수 없는 오류가 발생했습니다.");
       setResultState("error");
     }
   }
@@ -75,7 +75,7 @@ export function useResultViewer() {
       setResultState("loaded");
       await loadRecentResults();
     } catch (error) {
-      setResultError(error instanceof Error ? error.message : "Unknown error while saving result.");
+      setResultError(error instanceof Error ? error.message : "결과를 저장하는 중 알 수 없는 오류가 발생했습니다.");
       setResultState("error");
     } finally {
       setSavePending(false);
@@ -96,7 +96,7 @@ export function useResultViewer() {
       setResultState("loaded");
       await loadRecentResults();
     } catch (error) {
-      setResultError(error instanceof Error ? error.message : "Unknown error while regenerating result.");
+      setResultError(error instanceof Error ? error.message : "결과를 다시 생성하는 중 알 수 없는 오류가 발생했습니다.");
       setResultState("error");
     } finally {
       setRegeneratePending(false);

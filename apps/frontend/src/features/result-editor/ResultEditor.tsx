@@ -43,37 +43,37 @@ export function ResultEditor({ result, saving, onSave }: ResultEditorProps) {
 
   return (
     <form className="result-editor" onSubmit={handleSubmit}>
-      <h3>Edit result draft</h3>
+      <h3>결과 직접 수정</h3>
       <label>
-        <span>Headline</span>
-        <input value={headline} onChange={(event) => setHeadline(event.target.value)} />
+        <span>한 줄 소개</span>
+        <input aria-label="한 줄 소개" value={headline} onChange={(event) => setHeadline(event.target.value)} />
       </label>
       <label>
-        <span>Project overview</span>
+        <span>프로젝트 개요</span>
         <textarea value={projectOverview} onChange={(event) => setProjectOverview(event.target.value)} />
       </label>
       <label>
-        <span>Role summary</span>
+        <span>담당 역할</span>
         <textarea value={roleSummary} onChange={(event) => setRoleSummary(event.target.value)} />
       </label>
       <label>
-        <span>Key contributions</span>
+        <span>핵심 기여</span>
         <textarea value={keyContributions} onChange={(event) => setKeyContributions(event.target.value)} />
       </label>
       <label>
-        <span>Tech stack</span>
+        <span>기술 스택</span>
         <input value={techStack} onChange={(event) => setTechStack(event.target.value)} />
       </label>
       <label>
-        <span>Evidence summary</span>
+        <span>활동·근거 요약</span>
         <textarea value={evidenceSummary} onChange={(event) => setEvidenceSummary(event.target.value)} />
       </label>
       <label>
-        <span>Interview questions</span>
+        <span>면접 예상 질문</span>
         <textarea value={interviewQuestions} onChange={(event) => setInterviewQuestions(event.target.value)} />
       </label>
       <button className="button primary" type="submit" disabled={saving}>
-        {saving ? "Saving result..." : "Save result edits"}
+        {saving ? "저장 중..." : "수정 내용 저장"}
       </button>
     </form>
   );

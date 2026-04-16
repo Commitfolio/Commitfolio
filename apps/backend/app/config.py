@@ -30,6 +30,7 @@ class Settings:
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     openai_timeout_seconds: float = _get_float_env("OPENAI_TIMEOUT_SECONDS", 8.0)
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
 
 @lru_cache

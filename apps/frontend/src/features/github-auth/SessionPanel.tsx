@@ -17,14 +17,14 @@ export function SessionPanel({
 }: SessionPanelProps) {
   return (
     <div className="panel">
-      <h2>Session status</h2>
-      {sessionState === "loading" ? <p>Checking current session...</p> : null}
+      <h2>로그인 상태</h2>
+      {sessionState === "loading" ? <p>현재 세션을 확인하는 중입니다...</p> : null}
 
       {sessionState === "signed-out" ? (
         <>
-          <p>You are signed out. Start GitHub OAuth to create the local bootstrap session.</p>
+          <p>아직 로그인하지 않았습니다. GitHub 계정으로 연결하면 접근 가능한 저장소를 불러올 수 있습니다.</p>
           <a className="button primary" href={authStartUrl}>
-            Continue with GitHub
+            GitHub로 계속하기
           </a>
         </>
       ) : null}
@@ -33,24 +33,24 @@ export function SessionPanel({
         <>
           <dl className="user-grid">
             <div>
-              <dt>GitHub login</dt>
+              <dt>GitHub 계정</dt>
               <dd>@{user.github_login}</dd>
             </div>
             <div>
-              <dt>User id</dt>
+              <dt>사용자 ID</dt>
               <dd>{user.id}</dd>
             </div>
             <div>
-              <dt>Name</dt>
-              <dd>{user.name ?? "Not provided"}</dd>
+              <dt>이름</dt>
+              <dd>{user.name ?? "제공되지 않음"}</dd>
             </div>
             <div>
-              <dt>Connected</dt>
-              <dd>{String(user.connected)}</dd>
+              <dt>연결 상태</dt>
+              <dd>{user.connected ? "연결됨" : "연결 안 됨"}</dd>
             </div>
           </dl>
           <button className="button secondary" disabled={logoutPending} onClick={onLogout}>
-            {logoutPending ? "Signing out..." : "Log out"}
+            {logoutPending ? "로그아웃 중..." : "로그아웃"}
           </button>
         </>
       ) : null}

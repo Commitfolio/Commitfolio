@@ -12,6 +12,7 @@ from app.api.dependencies import get_github_service
 from app.api.routes import analysis_events, analysis_jobs, auth, repositories, results
 from app.config import Settings, get_settings
 from app.db import create_db_engine, create_session_factory, init_db
+from app.observability import configure_logging, request_logging_middleware, unexpected_exception_handler
 
 
 @asynccontextmanager
@@ -22,11 +23,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     resolved_settings = settings or get_settings()
+    configure_logging(resolved_settings.log_level)
     app = FastAPI(title="Commitfolio API", version="0.1.0", lifespan=lifespan)
     app.state.settings = resolved_settings
     app.state.github_access_tokens = {}
     app.state.db_engine = create_db_engine(resolved_settings.database_url)
     app.state.db_session_factory = create_session_factory(app.state.db_engine)
+
+    app.middleware("http")(request_logging_middleware)
+    app.add_exception_handler(Exception, unexpected_exception_handler)
 
     app.add_middleware(
         SessionMiddleware,

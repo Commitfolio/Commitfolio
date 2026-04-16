@@ -9,14 +9,14 @@ export function ResultDocument({ result }: ResultDocumentProps) {
   return (
     <article className="result-document" aria-labelledby="portfolio-result-title">
       <div>
-        <span className="eyebrow subtle">Portfolio result</span>
+        <span className="eyebrow subtle">포트폴리오 결과</span>
         <h2 id="portfolio-result-title">{result.headline}</h2>
         <p className="privacy-note">{result.repository_full_name} · version {result.version}</p>
         <p className="enhancement-status">
           <span className={`badge ${getEnhancementBadgeClass(result.enhancement_status)}`}>
             {getEnhancementLabel(result.enhancement_status, result.enhancement_message)}
           </span>
-          {result.enhancement_model ? <span className="privacy-note"> model: {result.enhancement_model}</span> : null}
+          {result.enhancement_model ? <span className="privacy-note"> 모델: {result.enhancement_model}</span> : null}
         </p>
       </div>
 

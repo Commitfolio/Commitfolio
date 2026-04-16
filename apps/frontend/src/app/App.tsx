@@ -42,7 +42,7 @@ export default function App() {
         setSessionState(currentUser ? "signed-in" : "signed-out");
       } catch (error) {
         setErrorMessage(
-          error instanceof Error ? error.message : "Unknown error while loading session state.",
+          error instanceof Error ? error.message : "세션 상태를 불러오는 중 알 수 없는 오류가 발생했습니다.",
         );
         setSessionState("signed-out");
       }
@@ -63,7 +63,7 @@ export default function App() {
       resetAnalysisJob();
       resetResult();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Logout failed.");
+      setErrorMessage(error instanceof Error ? error.message : "로그아웃에 실패했습니다.");
     } finally {
       setLogoutPending(false);
     }
@@ -76,12 +76,10 @@ export default function App() {
   return (
     <main className="shell">
       <section className="card">
-        <span className="eyebrow">Commitfolio bootstrap</span>
-        <h1>Choose the repository to turn into a portfolio</h1>
+        <span className="eyebrow">Commitfolio MVP</span>
+        <h1>GitHub 활동을 포트폴리오 문서로 바꾸기</h1>
         <p className="lede">
-          Commitfolio starts with GitHub OAuth, then asks you to choose one repository. Stage 1 reads
-          repository metadata only; commits, pull requests, issues, reviews, and changed files are
-          collected in later analysis stages.
+          GitHub로 로그인한 뒤 포트폴리오로 만들 저장소 하나를 선택하세요. Commit, Pull Request, Issue, Review, 변경 파일 근거를 모아 편집 가능한 포트폴리오 초안을 만듭니다.
         </p>
 
         {statusMessage ? <p className="notice success">{statusMessage}</p> : null}
@@ -133,7 +131,7 @@ export default function App() {
                   results.resultState === "generating"
                 }
                 resultGenerationLabel={
-                  results.resultState === "generating" ? "Generating result..." : "Generate portfolio result"
+                  results.resultState === "generating" ? "결과 생성 중..." : "포트폴리오 결과 생성"
                 }
               />
             ) : null}
@@ -144,11 +142,11 @@ export default function App() {
           <section className="panel result-panel" aria-labelledby="result-viewer-title">
             <div className="section-heading">
               <div>
-                <span className="eyebrow subtle">Stage 5</span>
-                <h2 id="result-viewer-title">Portfolio result</h2>
+                <span className="eyebrow subtle">결과 문서</span>
+                <h2 id="result-viewer-title">포트폴리오 결과</h2>
               </div>
               <button className="button secondary" type="button" onClick={() => void results.loadRecentResults()}>
-                Load recent results
+                최근 결과 불러오기
               </button>
             </div>
             {results.resultError ? <p className="notice error">{results.resultError}</p> : null}
@@ -162,7 +160,7 @@ export default function App() {
                     type="button"
                     onClick={() => void results.handleRegenerateResult()}
                   >
-                    {results.regeneratePending ? "Regenerating..." : "Regenerate result"}
+                    {results.regeneratePending ? "다시 생성 중..." : "결과 다시 생성"}
                   </button>
                 </div>
                 <ResultExportActions onPrint={handlePrintResult} />
@@ -177,7 +175,7 @@ export default function App() {
               </div>
             ) : (
               <p className="empty-state">
-                Run analysis, then generate a portfolio result to see the first editable draft.
+                분석을 실행한 뒤 포트폴리오 결과를 생성하면 편집 가능한 초안이 여기에 표시됩니다.
               </p>
             )}
           </section>
@@ -185,11 +183,10 @@ export default function App() {
 
         <div className="meta">
           <p>
-            Frontend uses <code>{authStartUrl}</code> as the GitHub entry point.
+            GitHub 로그인 시작 URL: <code>{authStartUrl}</code>
           </p>
           <p>
-            Configure <code>VITE_API_BASE_URL</code> when the backend is not running on{" "}
-            <code>http://localhost:8000</code>.
+            백엔드 주소가 <code>http://localhost:8000</code>이 아니면 <code>VITE_API_BASE_URL</code>을 설정하세요.
           </p>
         </div>
       </section>

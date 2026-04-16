@@ -18,3 +18,6 @@ apps/backend/build/
 apps/backend/*.egg-info/
 *.egg-info/
 *.pyc
+
+# Local backend SQLite databases
+apps/backend/*.db

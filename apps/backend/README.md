@@ -22,6 +22,22 @@ GITHUB_SCOPE="read:user repo read:org"
 This is intentionally documented as a tradeoff. A later hardening pass should evaluate a GitHub App
 or another fine-grained permission model before public launch.
 
+## Request logging and error handling
+
+Commitfolio logs application-level request lifecycle events with a request id:
+
+- `request_started request_id=... method=... path=...`
+- `request_finished request_id=... method=... path=... status_code=... duration_ms=...`
+- unexpected exceptions include `unhandled_exception request_id=...` and return a safe Korean error envelope.
+
+Optional logging level:
+
+```bash
+LOG_LEVEL=INFO
+```
+
+Responses include `X-Request-ID` so frontend/user reports can be matched with backend logs.
+
 ## Stage 1 API
 
 - `GET /api/v1/repositories?visibility=all|public|private`

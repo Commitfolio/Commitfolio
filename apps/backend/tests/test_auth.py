@@ -787,3 +787,43 @@ def test_portfolio_result_regenerate_requires_owned_result() -> None:
             "message": "Portfolio result was not found.",
         }
     }
+
+
+def test_healthcheck_includes_request_id_header() -> None:
+    client = create_test_client()
+
+    response = client.get("/healthz", headers={"X-Request-ID": "req_test"})
+
+    assert response.status_code == 200
+    assert response.headers["x-request-id"] == "req_test"
+
+
+def test_unexpected_exception_uses_common_error_envelope() -> None:
+    app = create_app(
+        Settings(
+            github_client_id="test-client-id",
+            github_client_secret="test-client-secret",
+            github_callback_url="http://testserver/api/v1/auth/github/callback",
+            frontend_app_url="http://frontend.test",
+            session_secret="test-session-secret",
+            cors_origin="http://frontend.test",
+            database_url="sqlite+pysqlite:///:memory:",
+        )
+    )
+
+    @app.get("/explode")
+    async def explode() -> None:
+        raise RuntimeError("boom")
+
+    client = TestClient(app, raise_server_exceptions=False)
+
+    response = client.get("/explode", headers={"X-Request-ID": "req_boom"})
+
+    assert response.status_code == 500
+    assert response.headers["x-request-id"] == "req_boom"
+    assert response.json() == {
+        "error": {
+            "code": "internal_server_error",
+            "message": "서버에서 예상하지 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        }
+    }

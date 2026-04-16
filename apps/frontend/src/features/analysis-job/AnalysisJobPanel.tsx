@@ -49,10 +49,9 @@ export function AnalysisJobPanel({
 
   return (
     <div className="selected-repository">
-      <span className="eyebrow subtle">Selected</span>
+      <span className="eyebrow subtle">선택됨</span>
       <p>
-        <strong>{selectedRepository.full_name}</strong> is ready for the next Stage 2 analysis job
-        bootstrap.
+        <strong>{selectedRepository.full_name}</strong> 저장소로 분석 작업을 만들 수 있습니다.
       </p>
       <button
         className="button primary"
@@ -60,7 +59,7 @@ export function AnalysisJobPanel({
         onClick={onCreateAnalysisJob}
         type="button"
       >
-        {analysisJobState === "creating" ? "Creating job..." : "Create analysis job"}
+        {analysisJobState === "creating" ? "분석 작업 생성 중..." : "분석 작업 만들기"}
       </button>
 
       {analysisJobError ? <p className="notice error">{analysisJobError}</p> : null}
@@ -68,24 +67,24 @@ export function AnalysisJobPanel({
       {analysisJob ? (
         <div className="job-summary">
           <div>
-            <span className="eyebrow subtle">Analysis job</span>
+            <span className="eyebrow subtle">분석 작업</span>
             <h3>{analysisJob.job_id}</h3>
           </div>
           <dl className="user-grid">
             <div>
-              <dt>Status</dt>
-              <dd>{analysisJob.status}</dd>
+              <dt>상태</dt>
+              <dd>{getJobStatusLabel(analysisJob.status)}</dd>
             </div>
             <div>
-              <dt>Repository</dt>
+              <dt>저장소</dt>
               <dd>{analysisJob.repository_full_name}</dd>
             </div>
             <div>
-              <dt>Branch</dt>
+              <dt>브랜치</dt>
               <dd>{analysisJob.branch}</dd>
             </div>
             <div>
-              <dt>Progress</dt>
+              <dt>진행률</dt>
               <dd>
                 {analysisJob.progress.stage} · {analysisJob.progress.percent}%
               </dd>
@@ -98,7 +97,7 @@ export function AnalysisJobPanel({
             onClick={onRefreshAnalysisJob}
             type="button"
           >
-            {analysisJobState === "refreshing" ? "Refreshing..." : "Refresh status"}
+            {analysisJobState === "refreshing" ? "상태 새로고침 중..." : "상태 새로고침"}
           </button>
           <button
             className="button primary"
@@ -106,7 +105,7 @@ export function AnalysisJobPanel({
             onClick={onRunAnalysisJob}
             type="button"
           >
-            {evidenceState === "running" ? "Running analysis..." : "Run analysis"}
+            {evidenceState === "running" ? "분석 실행 중..." : "분석 실행"}
           </button>
           <button
             className="button secondary"
@@ -117,26 +116,26 @@ export function AnalysisJobPanel({
             {resultGenerationLabel}
           </button>
           <div className="stream-status" aria-live="polite">
-            Progress stream: {progressStreamState}
+            진행 스트림: {getStreamStateLabel(progressStreamState)}
           </div>
           {progressStreamError ? <p className="notice error">{progressStreamError}</p> : null}
           {evidenceError ? <p className="notice error">{evidenceError}</p> : null}
           {evidenceSummary ? (
             <div className="evidence-summary">
               <div>
-                <span className="eyebrow subtle">Evidence</span>
-                <h3>{evidenceSummary.total_count} item(s) collected</h3>
+                <span className="eyebrow subtle">분석 근거</span>
+                <h3>{evidenceSummary.total_count}개 수집됨</h3>
               </div>
               <dl className="user-grid">
                 {Object.entries(evidenceSummary.counts).map(([sourceType, count]) => (
                   <div key={sourceType}>
-                    <dt>{sourceType}</dt>
+                    <dt>{getEvidenceTypeLabel(sourceType)}</dt>
                     <dd>{count}</dd>
                   </div>
                 ))}
               </dl>
               {visibleEvents.length > 0 ? (
-                <ul className="event-list" aria-label="Latest analysis events">
+                <ul className="event-list" aria-label="최근 분석 이벤트">
                   {visibleEvents.map((event) => (
                     <li key={event.sequence}>
                       <strong>#{event.sequence}</strong> {event.message}
@@ -147,11 +146,43 @@ export function AnalysisJobPanel({
             </div>
           ) : null}
           <p className="privacy-note">
-            Stage 4 streams replayable progress from the durable job event log. Refresh status remains
-            available as the recovery source of truth.
+            진행 상황은 서버의 durable event log에서 재생됩니다. 연결이 끊겨도 상태 새로고침으로 복구할 수 있습니다.
           </p>
         </div>
       ) : null}
     </div>
   );
+}
+
+function getJobStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    queued: "대기 중",
+    running: "실행 중",
+    completed: "완료",
+    failed: "실패",
+  };
+  return labels[status] ?? status;
+}
+
+function getStreamStateLabel(status: ProgressStreamState): string {
+  const labels: Record<ProgressStreamState, string> = {
+    idle: "대기",
+    connecting: "연결 중",
+    streaming: "수신 중",
+    unsupported: "지원 안 됨",
+    closed: "종료됨",
+    error: "오류",
+  };
+  return labels[status];
+}
+
+function getEvidenceTypeLabel(sourceType: string): string {
+  const labels: Record<string, string> = {
+    commit: "커밋",
+    pull_request: "Pull Request",
+    issue: "Issue",
+    review: "Review",
+    changed_file: "변경 파일",
+  };
+  return labels[sourceType] ?? sourceType;
 }
