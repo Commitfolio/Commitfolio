@@ -3,6 +3,17 @@ from functools import lru_cache
 import os
 
 
+def _get_float_env(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if not value:
+        return default
+
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     github_client_id: str = os.getenv("GITHUB_CLIENT_ID", "")
@@ -16,6 +27,9 @@ class Settings:
     session_secret: str = os.getenv("SESSION_SECRET", "dev-session-secret-change-me")
     cors_origin: str = os.getenv("BACKEND_CORS_ORIGIN", "http://localhost:5173")
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./commitfolio.db")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    openai_timeout_seconds: float = _get_float_env("OPENAI_TIMEOUT_SECONDS", 8.0)
 
 
 @lru_cache

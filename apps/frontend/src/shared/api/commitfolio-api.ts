@@ -214,6 +214,9 @@ export type PortfolioResult = {
   tech_stack: string[];
   evidence_summary: string;
   interview_questions: string[];
+  enhancement_status: string;
+  enhancement_model: string | null;
+  enhancement_message: string;
   evidence_links: PortfolioEvidenceLink[];
   created_at: string;
   updated_at: string;

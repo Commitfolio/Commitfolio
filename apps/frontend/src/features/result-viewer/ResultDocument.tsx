@@ -12,6 +12,12 @@ export function ResultDocument({ result }: ResultDocumentProps) {
         <span className="eyebrow subtle">Portfolio result</span>
         <h2 id="portfolio-result-title">{result.headline}</h2>
         <p className="privacy-note">{result.repository_full_name} · version {result.version}</p>
+        <p className="enhancement-status">
+          <span className={`badge ${getEnhancementBadgeClass(result.enhancement_status)}`}>
+            {getEnhancementLabel(result.enhancement_status, result.enhancement_message)}
+          </span>
+          {result.enhancement_model ? <span className="privacy-note"> model: {result.enhancement_model}</span> : null}
+        </p>
       </div>
 
       <ResultSection title="프로젝트 개요" sectionKey="project_overview" result={result}>
@@ -51,6 +57,34 @@ export function ResultDocument({ result }: ResultDocumentProps) {
       </ResultSection>
     </article>
   );
+}
+
+function getEnhancementLabel(status: string | undefined, message: string | undefined): string {
+  if (message) {
+    return message;
+  }
+
+  if (status === "enhanced") {
+    return "OpenAI 후처리 적용";
+  }
+
+  if (status === "fallback") {
+    return "OpenAI 후처리 실패, 기본 생성 사용";
+  }
+
+  return "기본 생성 사용";
+}
+
+function getEnhancementBadgeClass(status: string | undefined): string {
+  if (status === "enhanced") {
+    return "success";
+  }
+
+  if (status === "fallback") {
+    return "warning";
+  }
+
+  return "subtle";
 }
 
 type ResultSectionProps = {

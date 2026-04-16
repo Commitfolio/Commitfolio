@@ -46,6 +46,9 @@ class PortfolioResultRepository:
         tech_stack: list[str],
         evidence_summary: str,
         interview_questions: list[str],
+        enhancement_status: str = "not_configured",
+        enhancement_model: Optional[str] = None,
+        enhancement_message: str = "기본 생성 사용",
         version: int = 1,
     ) -> PortfolioResult:
         now = utc_now()
@@ -62,6 +65,9 @@ class PortfolioResultRepository:
             tech_stack=tech_stack,
             evidence_summary=evidence_summary,
             interview_questions=interview_questions,
+            enhancement_status=enhancement_status,
+            enhancement_model=enhancement_model,
+            enhancement_message=enhancement_message,
             created_at=now,
             updated_at=now,
         )

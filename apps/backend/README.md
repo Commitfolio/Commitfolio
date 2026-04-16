@@ -77,6 +77,18 @@ Jobs transition from `queued` to `running` and then `completed` or `failed`. Sta
 the durable event log through SSE; the event log, not the live SSE connection, is the source of truth
 for replay.
 
+## Stage 7 optional OpenAI result enhancement
+
+Result generation remains deterministic by default. To enable optional OpenAI post-processing, set:
+
+```bash
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_MODEL=gpt-4.1-mini
+OPENAI_TIMEOUT_SECONDS=8
+```
+
+If `OPENAI_API_KEY` is absent, invalid, times out, or returns an invalid response, Commitfolio stores the rule-based result and marks the response as fallback/non-configured instead of failing the result flow.
+
 ## Stage 4 SSE progress replay
 
 Stage 4 exposes the durable event log over SSE:
