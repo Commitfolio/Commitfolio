@@ -58,7 +58,7 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
 
         setRepositories([]);
         setRepositoryError(
-          error instanceof Error ? error.message : "Unknown error while loading repositories.",
+          error instanceof Error ? error.message : "저장소 목록을 불러오는 중 알 수 없는 오류가 발생했습니다.",
         );
         setRepositoryState("error");
       }

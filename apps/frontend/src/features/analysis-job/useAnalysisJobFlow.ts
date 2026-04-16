@@ -69,7 +69,7 @@ export function useAnalysisJobFlow() {
       setAnalysisJobState("created");
     } catch (error) {
       setAnalysisJobError(
-        error instanceof Error ? error.message : "Unknown error while creating the analysis job.",
+        error instanceof Error ? error.message : "분석 작업을 만드는 중 알 수 없는 오류가 발생했습니다.",
       );
       setAnalysisJobState("error");
     }
@@ -95,7 +95,7 @@ export function useAnalysisJobFlow() {
       }
     } catch (error) {
       setAnalysisJobError(
-        error instanceof Error ? error.message : "Unknown error while refreshing the analysis job.",
+        error instanceof Error ? error.message : "분석 작업 상태를 새로고침하는 중 알 수 없는 오류가 발생했습니다.",
       );
       setAnalysisJobState("error");
     }
@@ -121,7 +121,7 @@ export function useAnalysisJobFlow() {
       setProgressEvents(runResponse.evidence.latest_events);
       setEvidenceState("loaded");
     } catch (error) {
-      setEvidenceError(error instanceof Error ? error.message : "Unknown error while running analysis.");
+      setEvidenceError(error instanceof Error ? error.message : "분석을 실행하는 중 알 수 없는 오류가 발생했습니다.");
       setEvidenceState("error");
 
       try {

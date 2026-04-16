@@ -65,7 +65,7 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText("Continue with GitHub")).toBeInTheDocument();
+      expect(screen.getByText("GitHub로 계속하기")).toBeInTheDocument();
     });
   });
 
@@ -123,13 +123,13 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "로그아웃" })).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Log out" }));
+    await userEvent.click(screen.getByRole("button", { name: "로그아웃" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Continue with GitHub")).toBeInTheDocument();
+      expect(screen.getByText("GitHub로 계속하기")).toBeInTheDocument();
     });
   });
 
@@ -174,10 +174,10 @@ describe("App", () => {
       expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
+    await userEvent.click(screen.getByRole("button", { name: "octocat/commitfolio 선택" }));
 
     expect(
-      screen.getByText(/is ready for the next Stage 2 analysis job bootstrap/i),
+      screen.getByText(/저장소로 분석 작업을 만들 수 있습니다/i),
     ).toBeInTheDocument();
   });
 
@@ -235,8 +235,8 @@ describe("App", () => {
       expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create analysis job" }));
+    await userEvent.click(screen.getByRole("button", { name: "octocat/commitfolio 선택" }));
+    await userEvent.click(screen.getByRole("button", { name: "분석 작업 만들기" }));
 
     await waitFor(() => {
       expect(screen.getByText("job_123")).toBeInTheDocument();
@@ -335,17 +335,17 @@ describe("App", () => {
       expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create analysis job" }));
+    await userEvent.click(screen.getByRole("button", { name: "octocat/commitfolio 선택" }));
+    await userEvent.click(screen.getByRole("button", { name: "분석 작업 만들기" }));
 
     await waitFor(() => {
       expect(screen.getByText("job_123")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Run analysis" }));
+    await userEvent.click(screen.getByRole("button", { name: "분석 실행" }));
 
     await waitFor(() => {
-      expect(screen.getByText("5 item(s) collected")).toBeInTheDocument();
+      expect(screen.getByText("5개 수집됨")).toBeInTheDocument();
     });
     expect(screen.getByText(/Analysis evidence ingestion completed/i)).toBeInTheDocument();
   });
@@ -564,27 +564,27 @@ describe("App", () => {
       expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create analysis job" }));
+    await userEvent.click(screen.getByRole("button", { name: "octocat/commitfolio 선택" }));
+    await userEvent.click(screen.getByRole("button", { name: "분석 작업 만들기" }));
 
     await waitFor(() => {
       expect(screen.getByText("job_123")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Run analysis" }));
+    await userEvent.click(screen.getByRole("button", { name: "분석 실행" }));
 
     await waitFor(() => {
-      expect(screen.getByText("1 item(s) collected")).toBeInTheDocument();
+      expect(screen.getByText("1개 수집됨")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Generate portfolio result" }));
+    await userEvent.click(screen.getByRole("button", { name: "포트폴리오 결과 생성" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "octocat/commitfolio portfolio draft" })).toBeInTheDocument();
     });
     expect(screen.getAllByText("Built the API").length).toBeGreaterThan(0);
     expect(screen.getByText("OpenAI 후처리 적용")).toBeInTheDocument();
-    expect(screen.getByText(/model: gpt-test/i)).toBeInTheDocument();
+    expect(screen.getByText(/모델: gpt-test/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "commit: Initial commit" })).toHaveAttribute(
       "href",
       "https://github.com/octocat/commitfolio/commit/abc123",
@@ -596,15 +596,15 @@ describe("App", () => {
     expect(printSpy).toHaveBeenCalledTimes(1);
     printSpy.mockRestore();
 
-    await userEvent.clear(screen.getByLabelText("Headline"));
-    await userEvent.type(screen.getByLabelText("Headline"), "Updated portfolio headline");
-    await userEvent.click(screen.getByRole("button", { name: "Save result edits" }));
+    await userEvent.clear(screen.getByLabelText("한 줄 소개"));
+    await userEvent.type(screen.getByLabelText("한 줄 소개"), "Updated portfolio headline");
+    await userEvent.click(screen.getByRole("button", { name: "수정 내용 저장" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Updated portfolio headline" })).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Regenerate result" }));
+    await userEvent.click(screen.getByRole("button", { name: "결과 다시 생성" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Regenerated portfolio headline" })).toBeInTheDocument();
@@ -689,15 +689,15 @@ describe("App", () => {
       expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Select octocat/commitfolio" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create analysis job" }));
+    await userEvent.click(screen.getByRole("button", { name: "octocat/commitfolio 선택" }));
+    await userEvent.click(screen.getByRole("button", { name: "분석 작업 만들기" }));
 
     await waitFor(() => {
       expect(screen.getByText("job_123")).toBeInTheDocument();
     });
 
     sessionStorage.setItem("analysis-job:job_123:last-sequence", "7");
-    await userEvent.click(screen.getByRole("button", { name: "Run analysis" }));
+    await userEvent.click(screen.getByRole("button", { name: "분석 실행" }));
 
     const source = FakeEventSource.instances[0];
     expect(source.url).not.toContain("after=7");
@@ -712,7 +712,7 @@ describe("App", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Progress stream: streaming")).toBeInTheDocument();
+      expect(screen.getByText("진행 스트림: 수신 중")).toBeInTheDocument();
     });
     expect(source.close).not.toHaveBeenCalled();
 
@@ -730,7 +730,7 @@ describe("App", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Progress stream: closed")).toBeInTheDocument();
+      expect(screen.getByText("진행 스트림: 종료됨")).toBeInTheDocument();
     });
     expect(sessionStorage.getItem("analysis-job:job_123:last-sequence")).toBe("7");
 
@@ -769,7 +769,7 @@ describe("App", () => {
         json: async () => ({
           error: {
             code: "repository_lookup_failed",
-            message: "GitHub repository lookup failed.",
+            message: "저장소 목록을 가져오지 못했습니다. 권한 범위와 GitHub 상태를 확인해 주세요.",
           },
         }),
       },
@@ -778,7 +778,7 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText("GitHub repository lookup failed.")).toBeInTheDocument();
+      expect(screen.getByText("저장소 목록을 가져오지 못했습니다. 권한 범위와 GitHub 상태를 확인해 주세요.")).toBeInTheDocument();
     });
   });
 });

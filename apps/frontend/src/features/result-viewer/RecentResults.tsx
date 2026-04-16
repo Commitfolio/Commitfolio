@@ -12,8 +12,8 @@ export function RecentResults({ items, onSelectResult }: RecentResultsProps) {
 
   return (
     <div className="recent-results">
-      <h3>Recent results</h3>
-      <ul className="event-list" aria-label="Recent portfolio results">
+      <h3>최근 결과</h3>
+      <ul className="event-list" aria-label="최근 포트폴리오 결과">
         {items.map((item) => (
           <li key={item.result_id}>
             <button className="link-button" type="button" onClick={() => onSelectResult(item.result_id)}>

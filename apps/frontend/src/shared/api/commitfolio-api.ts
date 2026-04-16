@@ -1,3 +1,5 @@
+import { getKoreanErrorMessage } from "./error-messages";
+
 export type AuthenticatedUser = {
   id: string;
   github_login: string;
@@ -81,7 +83,7 @@ export async function fetchCurrentUser(): Promise<AuthenticatedUser | null> {
   }
 
   if (!response.ok) {
-    throw new Error("Failed to fetch session state.");
+    throw new Error("세션 상태를 불러오지 못했습니다.");
   }
 
   return (await response.json()) as AuthenticatedUser;
@@ -96,7 +98,7 @@ export async function fetchRepositories(
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to fetch repositories."));
+    throw new Error(await getErrorMessage(response, "저장소 목록을 불러오지 못했습니다."));
   }
 
   return (await response.json()) as RepositoryListResponse;
@@ -122,7 +124,7 @@ export async function createAnalysisJob(repository: RepositorySummary): Promise<
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to create analysis job."));
+    throw new Error(await getErrorMessage(response, "분석 작업을 만들지 못했습니다."));
   }
 
   return (await response.json()) as AnalysisJob;
@@ -134,7 +136,7 @@ export async function fetchAnalysisJob(jobId: string): Promise<AnalysisJob> {
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to fetch analysis job."));
+    throw new Error(await getErrorMessage(response, "분석 작업 상태를 불러오지 못했습니다."));
   }
 
   return (await response.json()) as AnalysisJob;
@@ -147,7 +149,7 @@ export async function runAnalysisJob(jobId: string): Promise<AnalysisRunResponse
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to run analysis job."));
+    throw new Error(await getErrorMessage(response, "분석을 실행하지 못했습니다."));
   }
 
   return (await response.json()) as AnalysisRunResponse;
@@ -159,7 +161,7 @@ export async function fetchEvidenceSummary(jobId: string): Promise<EvidenceSumma
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to fetch evidence summary."));
+    throw new Error(await getErrorMessage(response, "분석 근거 요약을 불러오지 못했습니다."));
   }
 
   return (await response.json()) as EvidenceSummary;
@@ -182,14 +184,14 @@ export async function logout(): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to log out."));
+    throw new Error(await getErrorMessage(response, "로그아웃하지 못했습니다."));
   }
 }
 
 async function getErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
-    const payload = (await response.json()) as { error?: { message?: string } };
-    return payload.error?.message ?? fallback;
+    const payload = (await response.json()) as { error?: { code?: string; message?: string } };
+    return getKoreanErrorMessage(payload.error?.code, payload.error?.message ?? fallback);
   } catch {
     return fallback;
   }
@@ -243,7 +245,7 @@ export async function generatePortfolioResult(jobId: string): Promise<PortfolioR
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to generate portfolio result."));
+    throw new Error(await getErrorMessage(response, "포트폴리오 결과를 생성하지 못했습니다."));
   }
 
   return (await response.json()) as PortfolioResult;
@@ -255,7 +257,7 @@ export async function fetchPortfolioResult(resultId: string): Promise<PortfolioR
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to fetch portfolio result."));
+    throw new Error(await getErrorMessage(response, "포트폴리오 결과를 불러오지 못했습니다."));
   }
 
   return (await response.json()) as PortfolioResult;
@@ -267,7 +269,7 @@ export async function fetchPortfolioResults(): Promise<PortfolioResultList> {
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to fetch portfolio results."));
+    throw new Error(await getErrorMessage(response, "최근 포트폴리오 결과를 불러오지 못했습니다."));
   }
 
   return (await response.json()) as PortfolioResultList;
@@ -297,7 +299,7 @@ export async function updatePortfolioResult(
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to update portfolio result."));
+    throw new Error(await getErrorMessage(response, "포트폴리오 결과를 저장하지 못했습니다."));
   }
 
   return (await response.json()) as PortfolioResult;
@@ -310,7 +312,7 @@ export async function regeneratePortfolioResult(resultId: string): Promise<Portf
   });
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response, "Failed to regenerate portfolio result."));
+    throw new Error(await getErrorMessage(response, "포트폴리오 결과를 다시 생성하지 못했습니다."));
   }
 
   return (await response.json()) as PortfolioResult;
