@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 from typing import Optional
 
+import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -110,7 +113,43 @@ class FakeGitHubService:
         ]
 
 
-def create_test_client() -> TestClient:
+class FakeOpenAIResponse:
+    def __init__(self, payload: dict, *, status_code: int = 200) -> None:
+        self.payload = payload
+        self.status_code = status_code
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise httpx.HTTPStatusError(
+                "OpenAI error",
+                request=httpx.Request("POST", "https://api.openai.com/v1/responses"),
+                response=httpx.Response(self.status_code),
+            )
+
+    def json(self) -> dict:
+        return self.payload
+
+
+class FakeOpenAIClient:
+    def __init__(self, response: FakeOpenAIResponse) -> None:
+        self.response = response
+        self.seen_json: Optional[dict] = None
+        self.seen_headers: Optional[dict] = None
+
+    def __enter__(self) -> "FakeOpenAIClient":
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+    def post(self, url: str, **kwargs) -> FakeOpenAIResponse:
+        assert url == "https://api.openai.com/v1/responses"
+        self.seen_json = kwargs["json"]
+        self.seen_headers = kwargs["headers"]
+        return self.response
+
+
+def create_test_client(*, openai_api_key: str = "", openai_model: str = "gpt-4.1-mini") -> TestClient:
     app = create_app(
         Settings(
             github_client_id="test-client-id",
@@ -120,6 +159,8 @@ def create_test_client() -> TestClient:
             session_secret="test-session-secret",
             cors_origin="http://frontend.test",
             database_url="sqlite+pysqlite:///:memory:",
+            openai_api_key=openai_api_key,
+            openai_model=openai_model,
         )
     )
     init_db(app.state.db_engine)
@@ -567,6 +608,9 @@ def test_completed_analysis_job_generates_portfolio_result_and_detail() -> None:
     assert result_payload["tech_stack"]
     assert result_payload["evidence_summary"]
     assert result_payload["interview_questions"]
+    assert result_payload["enhancement_status"] == "not_configured"
+    assert result_payload["enhancement_model"] is None
+    assert result_payload["enhancement_message"] == "기본 생성 사용"
     assert result_payload["evidence_links"]
     assert {link["section_key"] for link in result_payload["evidence_links"]} >= {
         "key_contributions",
@@ -579,6 +623,58 @@ def test_completed_analysis_job_generates_portfolio_result_and_detail() -> None:
     assert lookup_response.status_code == 200
     assert lookup_response.json()["result_id"] == result_payload["result_id"]
     assert job_response.json()["result_id"] == result_payload["result_id"]
+
+
+def test_portfolio_result_generation_applies_openai_enhancement(monkeypatch: pytest.MonkeyPatch) -> None:
+    enhanced_payload = {
+        "headline": "OpenAI가 다듬은 포트폴리오 헤드라인",
+        "project_overview": "OpenAI가 근거를 유지하며 다듬은 프로젝트 개요입니다.",
+        "role_summary": "OpenAI가 다듬은 역할 요약입니다.",
+        "key_contributions": ["OpenAI가 다듬은 핵심 기여"],
+        "tech_stack": ["Python", "React"],
+        "evidence_summary": "OpenAI가 다듬은 근거 요약입니다.",
+        "interview_questions": ["OpenAI가 다듬은 면접 질문은 무엇인가요?"],
+    }
+
+    fake_client = FakeOpenAIClient(FakeOpenAIResponse({"output_text": json.dumps(enhanced_payload, ensure_ascii=False)}))
+
+    monkeypatch.setattr("app.services.result_enhancement.httpx.Client", lambda timeout: fake_client)
+    client = create_test_client(openai_api_key="test-openai-key", openai_model="test-model")
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+
+    response = client.post(f"/api/v1/analysis-jobs/{job_id}/result")
+
+    assert response.status_code == 200
+    assert fake_client.seen_headers is not None
+    assert fake_client.seen_headers["Authorization"] == "Bearer test-openai-key"
+    assert fake_client.seen_json is not None
+    assert fake_client.seen_json["model"] == "test-model"
+    payload = response.json()
+    assert payload["headline"] == "OpenAI가 다듬은 포트폴리오 헤드라인"
+    assert payload["key_contributions"] == ["OpenAI가 다듬은 핵심 기여"]
+    assert payload["enhancement_status"] == "enhanced"
+    assert payload["enhancement_model"] == "test-model"
+    assert payload["enhancement_message"] == "OpenAI 후처리 적용"
+    assert payload["evidence_links"]
+
+
+def test_portfolio_result_generation_falls_back_when_openai_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_client = FakeOpenAIClient(FakeOpenAIResponse({"error": {"message": "boom"}}, status_code=500))
+
+    monkeypatch.setattr("app.services.result_enhancement.httpx.Client", lambda timeout: fake_client)
+    client = create_test_client(openai_api_key="test-openai-key", openai_model="test-model")
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+
+    response = client.post(f"/api/v1/analysis-jobs/{job_id}/result")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["headline"] == "octocat/commitfolio에서 근거 기반 개발 흐름을 완성한 프로젝트 경험"
+    assert payload["enhancement_status"] == "fallback"
+    assert payload["enhancement_model"] == "test-model"
+    assert payload["enhancement_message"] == "OpenAI 후처리 실패, 기본 생성 사용"
 
 
 def test_portfolio_result_list_returns_recent_results() -> None:

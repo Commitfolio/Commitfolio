@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Optional
 
@@ -15,17 +14,8 @@ from app.api.schemas import (
 from app.models import AnalysisEvidence, AnalysisJob, PortfolioResult, utc_now
 from app.repositories.analysis_jobs import AnalysisJobRepository
 from app.repositories.results import PortfolioResultRepository
-
-
-@dataclass(frozen=True)
-class ResultDraft:
-    headline: str
-    project_overview: str
-    role_summary: str
-    key_contributions: list[str]
-    tech_stack: list[str]
-    evidence_summary: str
-    interview_questions: list[str]
+from app.services.result_draft import ResultDraft
+from app.services.result_enhancement import NoOpResultEnhancer, ResultEnhancer
 
 
 class PortfolioResultService:
@@ -35,9 +25,11 @@ class PortfolioResultService:
         self,
         analysis_jobs: AnalysisJobRepository,
         results: PortfolioResultRepository,
+        enhancer: ResultEnhancer | None = None,
     ) -> None:
         self.analysis_jobs = analysis_jobs
         self.results = results
+        self.enhancer = enhancer or NoOpResultEnhancer()
 
     def generate_for_job(self, user_id: str, job_id: str) -> Optional[PortfolioResultResponse]:
         job = self.analysis_jobs.get_owned_job(user_id, job_id)
@@ -46,17 +38,21 @@ class PortfolioResultService:
 
         evidence = self.results.list_evidence_for_job(job.id)
         draft = build_result_draft(job, evidence)
+        enhancement = self.enhancer.enhance(job=job, evidence=evidence, draft=draft)
         result = self.results.add_result(
             analysis_job_id=job.id,
             user_id=user_id,
             repository_full_name=job.repository_full_name,
-            headline=draft.headline,
-            project_overview=draft.project_overview,
-            role_summary=draft.role_summary,
-            key_contributions=draft.key_contributions,
-            tech_stack=draft.tech_stack,
-            evidence_summary=draft.evidence_summary,
-            interview_questions=draft.interview_questions,
+            headline=enhancement.draft.headline,
+            project_overview=enhancement.draft.project_overview,
+            role_summary=enhancement.draft.role_summary,
+            key_contributions=enhancement.draft.key_contributions,
+            tech_stack=enhancement.draft.tech_stack,
+            evidence_summary=enhancement.draft.evidence_summary,
+            interview_questions=enhancement.draft.interview_questions,
+            enhancement_status=enhancement.status,
+            enhancement_model=enhancement.model,
+            enhancement_message=enhancement.message,
         )
         self.results.commit()
         self.results.refresh_result(result)
@@ -114,18 +110,22 @@ class PortfolioResultService:
 
         evidence = self.results.list_evidence_for_job(job.id)
         draft = build_result_draft(job, evidence)
+        enhancement = self.enhancer.enhance(job=job, evidence=evidence, draft=draft)
         next_version = self.results.get_max_version_for_job(job.id) + 1
         result = self.results.add_result(
             analysis_job_id=job.id,
             user_id=user_id,
             repository_full_name=job.repository_full_name,
-            headline=draft.headline,
-            project_overview=draft.project_overview,
-            role_summary=draft.role_summary,
-            key_contributions=draft.key_contributions,
-            tech_stack=draft.tech_stack,
-            evidence_summary=draft.evidence_summary,
-            interview_questions=draft.interview_questions,
+            headline=enhancement.draft.headline,
+            project_overview=enhancement.draft.project_overview,
+            role_summary=enhancement.draft.role_summary,
+            key_contributions=enhancement.draft.key_contributions,
+            tech_stack=enhancement.draft.tech_stack,
+            evidence_summary=enhancement.draft.evidence_summary,
+            interview_questions=enhancement.draft.interview_questions,
+            enhancement_status=enhancement.status,
+            enhancement_model=enhancement.model,
+            enhancement_message=enhancement.message,
             version=next_version,
         )
         self.results.commit()
@@ -160,6 +160,9 @@ class PortfolioResultService:
             tech_stack=list(result.tech_stack),
             evidence_summary=result.evidence_summary,
             interview_questions=list(result.interview_questions),
+            enhancement_status=result.enhancement_status,
+            enhancement_model=result.enhancement_model,
+            enhancement_message=result.enhancement_message,
             evidence_links=[
                 PortfolioEvidenceLinkResponse(
                     section_key=link.section_key,

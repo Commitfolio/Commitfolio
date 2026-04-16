@@ -434,6 +434,9 @@ describe("App", () => {
           tech_stack: ["Python", "React"],
           evidence_summary: "commit 1개",
           interview_questions: ["What was the key decision?"],
+          enhancement_status: "enhanced",
+          enhancement_model: "gpt-test",
+          enhancement_message: "OpenAI 후처리 적용",
           evidence_links: [
             {
               section_key: "key_contributions",
@@ -580,6 +583,8 @@ describe("App", () => {
       expect(screen.getByRole("heading", { name: "octocat/commitfolio portfolio draft" })).toBeInTheDocument();
     });
     expect(screen.getAllByText("Built the API").length).toBeGreaterThan(0);
+    expect(screen.getByText("OpenAI 후처리 적용")).toBeInTheDocument();
+    expect(screen.getByText(/model: gpt-test/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "commit: Initial commit" })).toHaveAttribute(
       "href",
       "https://github.com/octocat/commitfolio/commit/abc123",

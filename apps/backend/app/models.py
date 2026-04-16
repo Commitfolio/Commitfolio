@@ -123,6 +123,9 @@ class PortfolioResult(Base):
     tech_stack: Mapped[list] = mapped_column(JSON, default=list)
     evidence_summary: Mapped[str] = mapped_column(Text, default="")
     interview_questions: Mapped[list] = mapped_column(JSON, default=list)
+    enhancement_status: Mapped[str] = mapped_column(String(32), default="not_configured")
+    enhancement_model: Mapped[Optional[str]] = mapped_column(String(128))
+    enhancement_message: Mapped[str] = mapped_column(String(256), default="기본 생성 사용")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 

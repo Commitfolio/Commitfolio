@@ -58,6 +58,14 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - When work spans multiple concerns, split commits by intent and reviewability, even if that means making more commits.
 - Run lint, typecheck, tests, and static analysis after changes.
 - Final reports must include changed files, simplifications made, and remaining risks.
+- For work that touches external consoles, secrets, DB, deployment, OAuth, billing, or domains, include a Korean "사용자 액션" section in the opening brief and final report. List exactly what the human must do, where to do it, what env names are needed, what Codex can verify, and what logs/URLs should be returned. Use `docs/playbooks/operator-deployment-actions.md` for Commitfolio DB/deploy/OAuth actions.
+
+## Commitfolio OMX madmax rule
+- For future Commitfolio work, include the project `madmax` execution rule in the opening workflow brief.
+- Every new Commitfolio OMX/Codex runtime session should be started with `omx --madmax` by default, or with the equivalent `--madmax` option on the relevant OMX launch command when supported.
+- Do not use the non-existent `omx --madmode` flag; the canonical project rule is `madmax`.
+- `--madmax` bypasses Codex approvals and sandbox restrictions, so still avoid destructive/irreversible actions unless the user explicitly asks for them.
+- If this session is already running with equivalent full-access permissions, state that the madmax rule is already effectively satisfied and continue without relaunching.
 
 ## Commitfolio Project Contract
 - Product target: ship a public MVP that turns one GitHub repository's activity into a portfolio document with evidence links.

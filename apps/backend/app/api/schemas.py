@@ -120,6 +120,9 @@ class PortfolioResultResponse(BaseModel):
     tech_stack: list[str]
     evidence_summary: str
     interview_questions: list[str]
+    enhancement_status: str
+    enhancement_model: Optional[str] = None
+    enhancement_message: str
     evidence_links: list[PortfolioEvidenceLinkResponse]
     created_at: str
     updated_at: str

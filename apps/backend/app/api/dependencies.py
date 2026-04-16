@@ -10,6 +10,7 @@ from app.repositories.analysis_jobs import AnalysisJobRepository
 from app.repositories.results import PortfolioResultRepository
 from app.services.analysis_events import AnalysisEventService
 from app.services.analysis_jobs import AnalysisJobService
+from app.services.result_enhancement import OpenAIResultEnhancer
 from app.services.results import PortfolioResultService
 
 
@@ -41,7 +42,9 @@ def get_portfolio_result_repository(
 
 
 def get_portfolio_result_service(
+    request: Request,
     analysis_jobs: AnalysisJobRepository = Depends(get_analysis_job_repository),
     results: PortfolioResultRepository = Depends(get_portfolio_result_repository),
 ) -> PortfolioResultService:
-    return PortfolioResultService(analysis_jobs, results)
+    settings: Settings = request.app.state.settings
+    return PortfolioResultService(analysis_jobs, results, OpenAIResultEnhancer(settings))

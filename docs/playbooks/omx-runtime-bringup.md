@@ -50,6 +50,14 @@ tmux pane 안에서 이 repo로 이동해 Codex/OMX 작업을 시작한다.
 
 핵심은 **실제로 작업을 계속할 pane 하나를 target pane으로 삼는 것**이다.
 
+Commitfolio 작업 세션은 기본적으로 현재 OMX CLI의 실제 옵션인 `--madmax`로 실행한다. `omx --madmode`는 현재 버전에서 유효하지 않은 플래그이므로 사용하지 않는다.
+
+```bash
+omx --madmax
+```
+
+`--madmax`는 승인/샌드박스 우회 옵션이므로, 일반적인 비파괴 작업은 자동 진행하되 destructive/irreversible 작업은 명시적 요청이 있을 때만 수행한다.
+
 현재 pane id 확인:
 
 ```bash
