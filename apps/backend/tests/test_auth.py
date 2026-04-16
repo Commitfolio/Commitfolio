@@ -616,3 +616,78 @@ def test_portfolio_result_generation_requires_completed_job() -> None:
             "message": "Completed analysis job was not found for result generation.",
         }
     }
+
+
+def test_portfolio_result_patch_updates_editable_fields() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+    result_id = client.post(f"/api/v1/analysis-jobs/{job_id}/result").json()["result_id"]
+
+    response = client.patch(
+        f"/api/v1/results/{result_id}",
+        json={
+            "headline": "Updated headline",
+            "project_overview": "Updated overview",
+            "key_contributions": ["Updated contribution"],
+            "tech_stack": ["Python", "React", "SQLAlchemy"],
+            "interview_questions": ["Updated question?"],
+        },
+    )
+    lookup = client.get(f"/api/v1/results/{result_id}")
+
+    assert response.status_code == 200
+    assert response.json()["headline"] == "Updated headline"
+    assert response.json()["project_overview"] == "Updated overview"
+    assert response.json()["key_contributions"] == ["Updated contribution"]
+    assert response.json()["tech_stack"] == ["Python", "React", "SQLAlchemy"]
+    assert response.json()["interview_questions"] == ["Updated question?"]
+    assert lookup.json()["headline"] == "Updated headline"
+
+
+def test_portfolio_result_patch_requires_authentication() -> None:
+    client = create_test_client()
+
+    response = client.patch("/api/v1/results/res_missing", json={"headline": "Updated"})
+
+    assert response.status_code == 401
+
+
+def test_portfolio_result_regenerate_creates_new_version_and_updates_job() -> None:
+    client = create_test_client()
+    job_id = create_authenticated_job(client)
+    client.post(f"/api/v1/analysis-jobs/{job_id}/run")
+    first_result = client.post(f"/api/v1/analysis-jobs/{job_id}/result").json()
+
+    response = client.post(f"/api/v1/results/{first_result['result_id']}/regenerate")
+    job_response = client.get(f"/api/v1/analysis-jobs/{job_id}")
+    list_response = client.get("/api/v1/results")
+
+    assert response.status_code == 200
+    assert response.json()["result_id"] != first_result["result_id"]
+    assert response.json()["version"] == 2
+    assert job_response.json()["result_id"] == response.json()["result_id"]
+    assert [item["result_id"] for item in list_response.json()["items"]] == [
+        response.json()["result_id"],
+        first_result["result_id"],
+    ]
+
+
+def test_portfolio_result_regenerate_requires_owned_result() -> None:
+    client = create_test_client()
+    start_response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+    state = start_response.headers["location"].split("state=")[1]
+    client.get(
+        f"/api/v1/auth/github/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    response = client.post("/api/v1/results/res_missing/regenerate")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "portfolio_result_not_found",
+            "message": "Portfolio result was not found.",
+        }
+    }
