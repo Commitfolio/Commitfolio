@@ -6,6 +6,7 @@ import { getStatusMessage } from "../features/github-auth/auth-status";
 import { SessionPanel } from "../features/github-auth/SessionPanel";
 import { RepositorySelector } from "../features/repository-selector/RepositorySelector";
 import { useRepositorySelector } from "../features/repository-selector/useRepositorySelector";
+import { ResultEditor } from "../features/result-editor/ResultEditor";
 import { RecentResults } from "../features/result-viewer/RecentResults";
 import { ResultDocument } from "../features/result-viewer/ResultDocument";
 import { useResultViewer } from "../features/result-viewer/useResultViewer";
@@ -148,7 +149,24 @@ export default function App() {
             {results.resultError ? <p className="notice error">{results.resultError}</p> : null}
             <RecentResults items={results.recentResults} onSelectResult={results.handleSelectResult} />
             {results.result ? (
-              <ResultDocument result={results.result} />
+              <>
+                <div className="result-actions">
+                  <button
+                    className="button secondary"
+                    disabled={results.regeneratePending}
+                    type="button"
+                    onClick={() => void results.handleRegenerateResult()}
+                  >
+                    {results.regeneratePending ? "Regenerating..." : "Regenerate result"}
+                  </button>
+                </div>
+                <ResultDocument result={results.result} />
+                <ResultEditor
+                  result={results.result}
+                  saving={results.savePending}
+                  onSave={(payload) => void results.handleSaveResult(payload)}
+                />
+              </>
             ) : (
               <p className="empty-state">
                 Run analysis, then generate a portfolio result to see the first editable draft.
