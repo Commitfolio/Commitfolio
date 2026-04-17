@@ -874,3 +874,29 @@ def test_unexpected_exception_uses_common_error_envelope() -> None:
             "message": "서버에서 예상하지 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
         }
     }
+
+
+def test_session_cookie_settings_are_env_configurable_for_split_domain_preview() -> None:
+    app = create_app(
+        Settings(
+            github_client_id="test-client-id",
+            github_client_secret="test-client-secret",
+            github_callback_url="http://testserver/api/v1/auth/github/callback",
+            frontend_app_url="https://commitfolio-preview.vercel.app",
+            session_secret="test-session-secret",
+            session_cookie_same_site="none",
+            session_cookie_secure=True,
+            cors_origin="https://commitfolio-preview.vercel.app",
+            database_url="sqlite+pysqlite:///:memory:",
+        )
+    )
+    init_db(app.state.db_engine)
+    app.dependency_overrides[get_github_service] = lambda: FakeGitHubService()
+    client = TestClient(app)
+
+    response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+
+    assert response.status_code == 302
+    set_cookie = response.headers["set-cookie"].lower()
+    assert "samesite=none" in set_cookie
+    assert "secure" in set_cookie

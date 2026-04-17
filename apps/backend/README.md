@@ -38,6 +38,28 @@ LOG_LEVEL=INFO
 
 Responses include `X-Request-ID` so frontend/user reports can be matched with backend logs.
 
+
+## Preview / production session cookies
+
+Local development keeps the session cookie on `SameSite=Lax` without `Secure` because the frontend and
+backend both run on localhost. Split-domain HTTPS previews, such as Vercel frontend + Render backend,
+need cross-site credentialed requests to send the backend session cookie. Set these backend env vars in
+that case:
+
+```bash
+SESSION_COOKIE_SAME_SITE=none
+SESSION_COOKIE_SECURE=true
+```
+
+After Render/Vercel URLs exist, run the preview smoke helper from the repository root:
+
+```bash
+scripts/deployment/preview_smoke.py \
+  --backend-url https://<render-backend>.onrender.com \
+  --frontend-url https://<vercel-frontend>.vercel.app \
+  --expected-frontend-api-base https://<render-backend>.onrender.com
+```
+
 ## Stage 1 API
 
 - `GET /api/v1/repositories?visibility=all|public|private`

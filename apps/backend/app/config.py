@@ -25,6 +25,8 @@ class Settings:
     github_scope: str = os.getenv("GITHUB_SCOPE", "read:user repo read:org")
     frontend_app_url: str = os.getenv("FRONTEND_APP_URL", "http://localhost:5173")
     session_secret: str = os.getenv("SESSION_SECRET", "dev-session-secret-change-me")
+    session_cookie_same_site: str = os.getenv("SESSION_COOKIE_SAME_SITE", "lax")
+    session_cookie_secure: bool = os.getenv("SESSION_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
     cors_origin: str = os.getenv("BACKEND_CORS_ORIGIN", "http://localhost:5173")
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./commitfolio.db")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
