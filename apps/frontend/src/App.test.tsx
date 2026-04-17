@@ -181,6 +181,76 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+
+  it("loads the next repository page", async () => {
+    mockFetchSequence(
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: "github:123",
+          github_login: "octocat",
+          connected: true,
+          name: "The Octocat",
+          avatar_url: null,
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 456,
+              full_name: "octocat/commitfolio",
+              private: true,
+              owner_type: "Organization",
+              default_branch: "main",
+              permissions: { admin: false, push: true, pull: true },
+              html_url: "https://github.com/octocat/commitfolio",
+              description: "Portfolio generator",
+              updated_at: "2026-04-15T00:00:00Z",
+            },
+          ],
+          next_cursor: "2",
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 789,
+              full_name: "SERVICE-MOHAENG/Mohaeng-BE",
+              private: true,
+              owner_type: "Organization",
+              default_branch: "develop",
+              permissions: { admin: false, push: true, pull: true },
+              html_url: "https://github.com/SERVICE-MOHAENG/Mohaeng-BE",
+              description: "Mohaeng backend",
+              updated_at: "2026-04-14T00:00:00Z",
+            },
+          ],
+          next_cursor: null,
+        }),
+      },
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("octocat/commitfolio")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "저장소 더 불러오기" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("SERVICE-MOHAENG/Mohaeng-BE")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: "저장소 더 불러오기" })).not.toBeInTheDocument();
+  });
+
   it("creates an analysis job for the selected repository", async () => {
     mockFetchSequence(
       {
