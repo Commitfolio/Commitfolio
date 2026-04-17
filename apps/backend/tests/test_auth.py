@@ -69,6 +69,27 @@ class FakeGitHubService:
             next_cursor=None,
         )
 
+
+    async def fetch_repository_by_full_name(
+        self,
+        access_token: str,
+        *,
+        full_name: str,
+    ) -> GitHubRepository:
+        assert access_token == "access-token"
+        assert full_name == "SERVICE-MOHAENG/Mohaeng-BE"
+        return GitHubRepository(
+            id=789,
+            full_name="SERVICE-MOHAENG/Mohaeng-BE",
+            private=True,
+            owner_type="Organization",
+            default_branch="develop",
+            permissions={"admin": False, "push": True, "pull": True},
+            html_url="https://github.com/SERVICE-MOHAENG/Mohaeng-BE",
+            description="Mohaeng backend",
+            updated_at="2026-04-17T00:00:00Z",
+        )
+
     async def collect_repository_evidence(
         self,
         access_token: str,
@@ -308,6 +329,32 @@ def test_repositories_returns_accessible_repository_metadata() -> None:
         "next_cursor": None,
     }
 
+
+
+def test_repository_lookup_returns_direct_org_repository() -> None:
+    client = create_test_client()
+
+    start_response = client.get("/api/v1/auth/github/start", follow_redirects=False)
+    state = start_response.headers["location"].split("state=")[1]
+    client.get(
+        f"/api/v1/auth/github/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    response = client.get("/api/v1/repositories/lookup?full_name=SERVICE-MOHAENG/Mohaeng-BE")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": 789,
+        "full_name": "SERVICE-MOHAENG/Mohaeng-BE",
+        "private": True,
+        "owner_type": "Organization",
+        "default_branch": "develop",
+        "permissions": {"admin": False, "push": True, "pull": True},
+        "html_url": "https://github.com/SERVICE-MOHAENG/Mohaeng-BE",
+        "description": "Mohaeng backend",
+        "updated_at": "2026-04-17T00:00:00Z",
+    }
 
 def test_repositories_normalizes_github_failures() -> None:
     class FailingRepositoryGitHubService(FakeGitHubService):

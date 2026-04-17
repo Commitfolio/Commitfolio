@@ -590,3 +590,34 @@ h3 {
     overflow-wrap: anywhere;
   }
 }
+
+.repository-lookup {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+}
+
+.repository-lookup label {
+  display: grid;
+  gap: 6px;
+  color: #57606a;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.repository-lookup input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #24292f;
+}
+
+.repository-lookup input:focus {
+  border-color: #0969da;
+  outline: 2px solid rgba(9, 105, 218, 0.18);
+}

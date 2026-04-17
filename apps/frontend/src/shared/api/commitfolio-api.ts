@@ -108,6 +108,20 @@ export async function fetchRepositories(
   return (await response.json()) as RepositoryListResponse;
 }
 
+
+export async function lookupRepository(fullName: string): Promise<RepositorySummary> {
+  const params = new URLSearchParams({ full_name: fullName });
+  const response = await fetch(`${API_BASE_URL}/api/v1/repositories/lookup?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "저장소를 찾지 못했습니다."));
+  }
+
+  return (await response.json()) as RepositorySummary;
+}
+
 export async function createAnalysisJob(repository: RepositorySummary): Promise<AnalysisJob> {
   const response = await fetch(`${API_BASE_URL}/api/v1/analysis-jobs`, {
     method: "POST",

@@ -117,7 +117,10 @@ export default function App() {
             hasMoreRepositories={repositories.hasMoreRepositories}
             loadingMore={repositories.loadingMore}
             loadMoreError={repositories.loadMoreError}
+            lookupError={repositories.lookupError}
+            lookupState={repositories.lookupState}
             onLoadMoreRepositories={repositories.handleLoadMoreRepositories}
+            onLookupRepository={repositories.handleLookupRepository}
             onSelectRepository={repositories.handleSelectRepository}
             onVisibilityChange={repositories.setRepositoryVisibility}
           >
