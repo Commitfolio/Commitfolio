@@ -75,17 +75,57 @@ export default function App() {
 
   return (
     <main className="shell">
-      <header className="app-header">
-        <div className="brand-lockup">
+      <nav className="topbar" aria-label="Commitfolio navigation">
+        <a className="topbar-brand" href="/" aria-label="Commitfolio 홈">
           <span className="mark" aria-hidden="true">CF</span>
-          <div>
-            <p className="eyebrow">Commitfolio MVP</p>
-            <h1>GitHub 활동을 포트폴리오 문서로 바꾸기</h1>
+          <span>Commitfolio</span>
+        </a>
+        <div className="topbar-links" aria-label="제품 흐름">
+          <a href="#repository-selector-title">Projects</a>
+          <a href="#result-viewer-title">Portfolio</a>
+          <span className="session-chip">{sessionState === "signed-in" ? "Connected" : "Preview"}</span>
+        </div>
+      </nav>
+
+      <header className="app-header">
+        <div className="hero-copy">
+          <p className="eyebrow">Architectural Portfolio Generator</p>
+          <h1>GitHub 활동을 근거가 살아있는 포트폴리오 문서로 바꾸기</h1>
+          <p className="lede">
+            저장소를 선택하면 Commit, Pull Request, Issue, Review, 변경 파일 근거를 큐레이션해 편집 가능한 포트폴리오 초안을 만듭니다.
+          </p>
+          <div className="hero-actions" aria-label="핵심 가치">
+            <span className="badge subtle">Evidence-backed</span>
+            <span className="badge subtle">Editorial document</span>
+            <span className="badge subtle">PDF-ready</span>
           </div>
         </div>
-        <p className="lede">
-          저장소를 선택하면 Commit, Pull Request, Issue, Review, 변경 파일 근거를 모아 편집 가능한 포트폴리오 초안을 만듭니다.
-        </p>
+        <aside className="hero-preview" aria-label="Commitfolio 포트폴리오 미리보기">
+          <div className="preview-header">
+            <div>
+              <span className="eyebrow subtle">Commit Stream</span>
+              <h2>Impact timeline</h2>
+            </div>
+            <span className="session-chip active">Active</span>
+          </div>
+          <ol className="preview-stream">
+            <li>
+              <span>PR #42</span>
+              <strong>분산 이벤트 수집 파이프라인 안정화</strong>
+              <p>latency 15% 개선 근거를 포트폴리오 섹션에 연결합니다.</p>
+            </li>
+            <li>
+              <span>Commit 7f2d1e</span>
+              <strong>Evidence link 자동 매핑</strong>
+              <p>각 주장 옆에 GitHub 원문 링크를 남겨 검증 가능성을 높입니다.</p>
+            </li>
+            <li>
+              <span>Review note</span>
+              <strong>면접 질문 생성 준비</strong>
+              <p>역할, 기여, 기술 판단을 질문/답변 소재로 재구성합니다.</p>
+            </li>
+          </ol>
+        </aside>
       </header>
 
       <section className="workflow-strip" aria-label="작업 흐름">
