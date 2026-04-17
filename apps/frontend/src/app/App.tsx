@@ -119,6 +119,8 @@ export default function App() {
             loadMoreError={repositories.loadMoreError}
             lookupError={repositories.lookupError}
             lookupState={repositories.lookupState}
+            lookupSuccess={repositories.lookupSuccess}
+            highlightedRepositoryId={repositories.highlightedRepositoryId}
             onLoadMoreRepositories={repositories.handleLoadMoreRepositories}
             onLookupRepository={repositories.handleLookupRepository}
             onSelectRepository={repositories.handleSelectRepository}

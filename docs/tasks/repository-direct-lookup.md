@@ -27,6 +27,8 @@
 - [x] `npm --prefix apps/frontend run build`
 - [x] `git diff --check`
 
+- 2026-04-17: 검색 성공 UX 강화 — 성공 안내, 목록 상단 배치, 직접 찾음 배지, 자동 선택을 추가했다.
+
 ## Completion Notes
 - What changed: `owner/repo` 또는 GitHub URL로 저장소를 직접 조회하는 backend endpoint와 frontend 검색 form을 추가했다. 조회 성공 시 목록에 추가하고 자동 선택한다.
 - Evidence: backend pytest 30 passed, frontend lint/typecheck/test 11 passed/build, compileall, git diff --check 통과.

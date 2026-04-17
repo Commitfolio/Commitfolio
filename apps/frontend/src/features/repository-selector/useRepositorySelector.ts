@@ -13,27 +13,32 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
   const [repositoryVisibility, setRepositoryVisibility] = useState<RepositoryVisibility>("all");
   const [repositories, setRepositories] = useState<RepositorySummary[]>([]);
   const [selectedRepository, setSelectedRepository] = useState<RepositorySummary | null>(null);
+  const [highlightedRepositoryId, setHighlightedRepositoryId] = useState<number | null>(null);
   const [repositoryError, setRepositoryError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const [lookupState, setLookupState] = useState<"idle" | "loading" | "error">("idle");
+  const [lookupState, setLookupState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupSuccess, setLookupSuccess] = useState<string | null>(null);
 
   function resetRepositories() {
     setRepositoryState("idle");
     setRepositories([]);
     setSelectedRepository(null);
+    setHighlightedRepositoryId(null);
     setRepositoryError(null);
     setNextCursor(null);
     setLoadingMore(false);
     setLoadMoreError(null);
     setLookupState("idle");
     setLookupError(null);
+    setLookupSuccess(null);
   }
 
   function handleSelectRepository(repository: RepositorySummary) {
     setSelectedRepository(repository);
+    setHighlightedRepositoryId(repository.id);
     onResetAnalysis();
   }
 
@@ -47,7 +52,7 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
 
     try {
       const response = await fetchRepositories(repositoryVisibility, nextCursor);
-      setRepositories((current) => mergeRepositories(current, response.items));
+      setRepositories((current) => appendRepositories(current, response.items));
       setNextCursor(response.next_cursor);
     } catch (error) {
       setLoadMoreError(
@@ -58,25 +63,29 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
     }
   }
 
-
   async function handleLookupRepository(input: string) {
     const fullName = normalizeRepositoryInput(input);
     if (!fullName) {
       setLookupState("error");
+      setLookupSuccess(null);
       setLookupError("저장소 이름 또는 GitHub URL을 입력해 주세요. 예: SERVICE-MOHAENG/Mohaeng-BE");
       return;
     }
 
     setLookupState("loading");
     setLookupError(null);
+    setLookupSuccess(null);
 
     try {
       const repository = await lookupRepository(fullName);
-      setRepositories((current) => mergeRepositories(current, [repository]));
+      setRepositories((current) => promoteRepository(current, repository));
       setSelectedRepository(repository);
+      setHighlightedRepositoryId(repository.id);
+      setLookupSuccess(`${repository.full_name} 저장소를 찾고 선택했습니다.`);
       onResetAnalysis();
-      setLookupState("idle");
+      setLookupState("success");
     } catch (error) {
+      setLookupSuccess(null);
       setLookupError(error instanceof Error ? error.message : "저장소를 찾는 중 알 수 없는 오류가 발생했습니다.");
       setLookupState("error");
     }
@@ -95,8 +104,12 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
       setRepositoryState("loading");
       setRepositoryError(null);
       setLoadMoreError(null);
+      setLookupError(null);
+      setLookupSuccess(null);
+      setLookupState("idle");
       setNextCursor(null);
       setSelectedRepository(null);
+      setHighlightedRepositoryId(null);
       onResetAnalysis();
 
       try {
@@ -135,9 +148,11 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
     handleLookupRepository,
     handleSelectRepository,
     hasMoreRepositories: Boolean(nextCursor),
+    highlightedRepositoryId,
     loadingMore,
     lookupError,
     lookupState,
+    lookupSuccess,
     loadMoreError,
     repositories,
     repositoryError,
@@ -149,7 +164,7 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
   };
 }
 
-function mergeRepositories(
+function appendRepositories(
   current: RepositorySummary[],
   nextItems: RepositorySummary[],
 ): RepositorySummary[] {
@@ -164,6 +179,10 @@ function mergeRepositories(
   }
 
   return merged;
+}
+
+function promoteRepository(current: RepositorySummary[], repository: RepositorySummary): RepositorySummary[] {
+  return [repository, ...current.filter((item) => item.id !== repository.id)];
 }
 
 function normalizeRepositoryInput(value: string): string | null {

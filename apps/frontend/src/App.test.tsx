@@ -302,6 +302,8 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getAllByText("SERVICE-MOHAENG/Mohaeng-BE").length).toBeGreaterThan(0);
     });
+    expect(screen.getByText("SERVICE-MOHAENG/Mohaeng-BE 저장소를 찾고 선택했습니다.")).toBeInTheDocument();
+    expect(screen.getByText("직접 찾음")).toBeInTheDocument();
     expect(screen.getByText(/저장소로 분석 작업을 만들 수 있습니다/i)).toBeInTheDocument();
   });
 
