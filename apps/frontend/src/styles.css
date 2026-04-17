@@ -621,3 +621,8 @@ h3 {
   border-color: #0969da;
   outline: 2px solid rgba(9, 105, 218, 0.18);
 }
+
+.repository.highlighted {
+  border-color: #2da44e;
+  box-shadow: inset 3px 0 0 #2da44e;
+}

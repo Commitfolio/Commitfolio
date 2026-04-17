@@ -3,11 +3,12 @@ import { useState } from "react";
 
 type RepositoryLookupFormProps = {
   error: string | null;
-  state: "idle" | "loading" | "error";
+  state: "idle" | "loading" | "success" | "error";
+  success: string | null;
   onLookupRepository: (value: string) => void;
 };
 
-export function RepositoryLookupForm({ error, state, onLookupRepository }: RepositoryLookupFormProps) {
+export function RepositoryLookupForm({ error, state, success, onLookupRepository }: RepositoryLookupFormProps) {
   const [value, setValue] = useState("");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -29,6 +30,7 @@ export function RepositoryLookupForm({ error, state, onLookupRepository }: Repos
       <button className="button secondary" type="submit" disabled={state === "loading"}>
         {state === "loading" ? "저장소 찾는 중..." : "저장소 직접 찾기"}
       </button>
+      {success ? <p className="notice success">{success}</p> : null}
       {error ? <p className="notice error">{error}</p> : null}
     </form>
   );

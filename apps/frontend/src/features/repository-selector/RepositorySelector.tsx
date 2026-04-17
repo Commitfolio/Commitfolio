@@ -16,7 +16,9 @@ type RepositorySelectorProps = {
   loadingMore: boolean;
   loadMoreError: string | null;
   lookupError: string | null;
-  lookupState: "idle" | "loading" | "error";
+  lookupState: "idle" | "loading" | "success" | "error";
+  lookupSuccess: string | null;
+  highlightedRepositoryId: number | null;
   onLoadMoreRepositories: () => void;
   onLookupRepository: (value: string) => void;
   onSelectRepository: (repository: RepositorySummary) => void;
@@ -35,6 +37,8 @@ export function RepositorySelector({
   loadMoreError,
   lookupError,
   lookupState,
+  lookupSuccess,
+  highlightedRepositoryId,
   onLoadMoreRepositories,
   onLookupRepository,
   onSelectRepository,
@@ -81,6 +85,7 @@ export function RepositorySelector({
         <RepositoryLookupForm
           error={lookupError}
           state={lookupState}
+          success={lookupSuccess}
           onLookupRepository={onLookupRepository}
         />
       ) : null}
@@ -90,9 +95,10 @@ export function RepositorySelector({
           <ul className="repository-list" aria-label="접근 가능한 저장소">
             {repositories.map((repository) => {
               const isSelected = selectedRepository?.id === repository.id;
+              const isHighlighted = highlightedRepositoryId === repository.id;
 
               return (
-                <li key={repository.id} className={isSelected ? "repository selected" : "repository"}>
+                <li key={repository.id} className={getRepositoryClassName(isSelected, isHighlighted)}>
                   <button
                     type="button"
                     className="repository-button"
@@ -102,6 +108,7 @@ export function RepositorySelector({
                   >
                     <span className="repository-main">
                       <span className="repository-name">{repository.full_name}</span>
+                      {isHighlighted ? <span className="badge success">직접 찾음</span> : null}
                       <span className="repository-description">
                         {repository.description ?? "설명이 없습니다."}
                       </span>
@@ -135,4 +142,17 @@ export function RepositorySelector({
       {children}
     </section>
   );
+}
+
+
+function getRepositoryClassName(isSelected: boolean, isHighlighted: boolean): string {
+  if (isSelected) {
+    return "repository selected highlighted";
+  }
+
+  if (isHighlighted) {
+    return "repository highlighted";
+  }
+
+  return "repository";
 }
