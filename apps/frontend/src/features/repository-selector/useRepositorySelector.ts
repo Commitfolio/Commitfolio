@@ -14,17 +14,44 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
   const [repositories, setRepositories] = useState<RepositorySummary[]>([]);
   const [selectedRepository, setSelectedRepository] = useState<RepositorySummary | null>(null);
   const [repositoryError, setRepositoryError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
   function resetRepositories() {
     setRepositoryState("idle");
     setRepositories([]);
     setSelectedRepository(null);
     setRepositoryError(null);
+    setNextCursor(null);
+    setLoadingMore(false);
+    setLoadMoreError(null);
   }
 
   function handleSelectRepository(repository: RepositorySummary) {
     setSelectedRepository(repository);
     onResetAnalysis();
+  }
+
+  async function handleLoadMoreRepositories() {
+    if (!nextCursor || loadingMore) {
+      return;
+    }
+
+    setLoadingMore(true);
+    setLoadMoreError(null);
+
+    try {
+      const response = await fetchRepositories(repositoryVisibility, nextCursor);
+      setRepositories((current) => mergeRepositories(current, response.items));
+      setNextCursor(response.next_cursor);
+    } catch (error) {
+      setLoadMoreError(
+        error instanceof Error ? error.message : "저장소를 더 불러오는 중 알 수 없는 오류가 발생했습니다.",
+      );
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   useEffect(() => {
@@ -39,6 +66,8 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
     async function loadRepositories() {
       setRepositoryState("loading");
       setRepositoryError(null);
+      setLoadMoreError(null);
+      setNextCursor(null);
       setSelectedRepository(null);
       onResetAnalysis();
 
@@ -50,6 +79,7 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
         }
 
         setRepositories(response.items);
+        setNextCursor(response.next_cursor);
         setRepositoryState("loaded");
       } catch (error) {
         if (cancelled) {
@@ -57,6 +87,7 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
         }
 
         setRepositories([]);
+        setNextCursor(null);
         setRepositoryError(
           error instanceof Error ? error.message : "저장소 목록을 불러오는 중 알 수 없는 오류가 발생했습니다.",
         );
@@ -72,7 +103,11 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
   }, [onResetAnalysis, repositoryVisibility, sessionState]);
 
   return {
+    handleLoadMoreRepositories,
     handleSelectRepository,
+    hasMoreRepositories: Boolean(nextCursor),
+    loadingMore,
+    loadMoreError,
     repositories,
     repositoryError,
     repositoryState,
@@ -81,4 +116,21 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
     selectedRepository,
     setRepositoryVisibility,
   };
+}
+
+function mergeRepositories(
+  current: RepositorySummary[],
+  nextItems: RepositorySummary[],
+): RepositorySummary[] {
+  const seen = new Set(current.map((repository) => repository.id));
+  const merged = [...current];
+
+  for (const repository of nextItems) {
+    if (!seen.has(repository.id)) {
+      merged.push(repository);
+      seen.add(repository.id);
+    }
+  }
+
+  return merged;
 }

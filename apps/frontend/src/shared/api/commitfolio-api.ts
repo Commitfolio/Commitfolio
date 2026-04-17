@@ -91,8 +91,12 @@ export async function fetchCurrentUser(): Promise<AuthenticatedUser | null> {
 
 export async function fetchRepositories(
   visibility: RepositoryVisibility = "all",
+  cursor?: string | null,
 ): Promise<RepositoryListResponse> {
   const params = new URLSearchParams({ visibility });
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
   const response = await fetch(`${API_BASE_URL}/api/v1/repositories?${params.toString()}`, {
     credentials: "include",
   });

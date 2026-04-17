@@ -114,6 +114,10 @@ export default function App() {
             repositoryState={repositories.repositoryState}
             repositoryVisibility={repositories.repositoryVisibility}
             selectedRepository={repositories.selectedRepository}
+            hasMoreRepositories={repositories.hasMoreRepositories}
+            loadingMore={repositories.loadingMore}
+            loadMoreError={repositories.loadMoreError}
+            onLoadMoreRepositories={repositories.handleLoadMoreRepositories}
             onSelectRepository={repositories.handleSelectRepository}
             onVisibilityChange={repositories.setRepositoryVisibility}
           >

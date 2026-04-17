@@ -11,6 +11,10 @@ type RepositorySelectorProps = {
   repositoryState: RepositoryState;
   repositoryVisibility: RepositoryVisibility;
   selectedRepository: RepositorySummary | null;
+  hasMoreRepositories: boolean;
+  loadingMore: boolean;
+  loadMoreError: string | null;
+  onLoadMoreRepositories: () => void;
   onSelectRepository: (repository: RepositorySummary) => void;
   onVisibilityChange: (visibility: RepositoryVisibility) => void;
   children?: ReactNode;
@@ -22,6 +26,10 @@ export function RepositorySelector({
   repositoryState,
   repositoryVisibility,
   selectedRepository,
+  hasMoreRepositories,
+  loadingMore,
+  loadMoreError,
+  onLoadMoreRepositories,
   onSelectRepository,
   onVisibilityChange,
   children,
@@ -63,37 +71,50 @@ export function RepositorySelector({
       ) : null}
 
       {repositories.length > 0 ? (
-        <ul className="repository-list" aria-label="접근 가능한 저장소">
-          {repositories.map((repository) => {
-            const isSelected = selectedRepository?.id === repository.id;
+        <>
+          <ul className="repository-list" aria-label="접근 가능한 저장소">
+            {repositories.map((repository) => {
+              const isSelected = selectedRepository?.id === repository.id;
 
-            return (
-              <li key={repository.id} className={isSelected ? "repository selected" : "repository"}>
-                <button
-                  type="button"
-                  className="repository-button"
-                  aria-pressed={isSelected}
-                  aria-label={`${repository.full_name} 선택`}
-                  onClick={() => onSelectRepository(repository)}
-                >
-                  <span className="repository-main">
-                    <span className="repository-name">{repository.full_name}</span>
-                    <span className="repository-description">
-                      {repository.description ?? "설명이 없습니다."}
+              return (
+                <li key={repository.id} className={isSelected ? "repository selected" : "repository"}>
+                  <button
+                    type="button"
+                    className="repository-button"
+                    aria-pressed={isSelected}
+                    aria-label={`${repository.full_name} 선택`}
+                    onClick={() => onSelectRepository(repository)}
+                  >
+                    <span className="repository-main">
+                      <span className="repository-name">{repository.full_name}</span>
+                      <span className="repository-description">
+                        {repository.description ?? "설명이 없습니다."}
+                      </span>
                     </span>
-                  </span>
-                  <span className="repository-meta">
-                    <span className={repository.private ? "badge private" : "badge public"}>
-                      {repository.private ? "비공개" : "공개"}
+                    <span className="repository-meta">
+                      <span className={repository.private ? "badge private" : "badge public"}>
+                        {repository.private ? "비공개" : "공개"}
+                      </span>
+                      <span className="badge">{repository.owner_type}</span>
+                      <span className="badge">기본 브랜치: {repository.default_branch}</span>
                     </span>
-                    <span className="badge">{repository.owner_type}</span>
-                    <span className="badge">기본 브랜치: {repository.default_branch}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {loadMoreError ? <p className="notice error">{loadMoreError}</p> : null}
+          {hasMoreRepositories ? (
+            <button
+              className="button secondary"
+              type="button"
+              disabled={loadingMore}
+              onClick={onLoadMoreRepositories}
+            >
+              {loadingMore ? "저장소 더 불러오는 중..." : "저장소 더 불러오기"}
+            </button>
+          ) : null}
+        </>
       ) : null}
 
       {children}
