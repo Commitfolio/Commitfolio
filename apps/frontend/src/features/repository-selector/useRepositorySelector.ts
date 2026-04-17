@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SessionState } from "../../entities/session/session.types";
 import type { RepositoryState, RepositorySummary, RepositoryVisibility } from "../../entities/repository/repository.types";
-import { fetchRepositories } from "../../shared/api/commitfolio-api";
+import { fetchRepositories, lookupRepository } from "../../shared/api/commitfolio-api";
 
 type UseRepositorySelectorOptions = {
   onResetAnalysis: () => void;
@@ -17,6 +17,8 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [lookupState, setLookupState] = useState<"idle" | "loading" | "error">("idle");
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
   function resetRepositories() {
     setRepositoryState("idle");
@@ -26,6 +28,8 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
     setNextCursor(null);
     setLoadingMore(false);
     setLoadMoreError(null);
+    setLookupState("idle");
+    setLookupError(null);
   }
 
   function handleSelectRepository(repository: RepositorySummary) {
@@ -51,6 +55,30 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
       );
     } finally {
       setLoadingMore(false);
+    }
+  }
+
+
+  async function handleLookupRepository(input: string) {
+    const fullName = normalizeRepositoryInput(input);
+    if (!fullName) {
+      setLookupState("error");
+      setLookupError("저장소 이름 또는 GitHub URL을 입력해 주세요. 예: SERVICE-MOHAENG/Mohaeng-BE");
+      return;
+    }
+
+    setLookupState("loading");
+    setLookupError(null);
+
+    try {
+      const repository = await lookupRepository(fullName);
+      setRepositories((current) => mergeRepositories(current, [repository]));
+      setSelectedRepository(repository);
+      onResetAnalysis();
+      setLookupState("idle");
+    } catch (error) {
+      setLookupError(error instanceof Error ? error.message : "저장소를 찾는 중 알 수 없는 오류가 발생했습니다.");
+      setLookupState("error");
     }
   }
 
@@ -104,9 +132,12 @@ export function useRepositorySelector({ onResetAnalysis, sessionState }: UseRepo
 
   return {
     handleLoadMoreRepositories,
+    handleLookupRepository,
     handleSelectRepository,
     hasMoreRepositories: Boolean(nextCursor),
     loadingMore,
+    lookupError,
+    lookupState,
     loadMoreError,
     repositories,
     repositoryError,
@@ -133,4 +164,23 @@ function mergeRepositories(
   }
 
   return merged;
+}
+
+function normalizeRepositoryInput(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const githubMatch = trimmed.match(/^https?:\/\/github\.com\/([^/]+)\/([^/?#]+)\/?/i);
+  if (githubMatch) {
+    return `${githubMatch[1]}/${githubMatch[2].replace(/\.git$/, "")}`;
+  }
+
+  const fullNameMatch = trimmed.match(/^([^/\s]+)\/([^/\s]+)$/);
+  if (!fullNameMatch) {
+    return null;
+  }
+
+  return `${fullNameMatch[1]}/${fullNameMatch[2].replace(/\.git$/, "")}`;
 }

@@ -185,6 +185,41 @@ class GitHubOAuthService:
             next_cursor=self._extract_next_cursor(response),
         )
 
+
+    async def fetch_repository_by_full_name(
+        self,
+        access_token: str,
+        *,
+        full_name: str,
+    ) -> GitHubRepository:
+        owner, repo = self._split_full_name(full_name)
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"https://api.github.com/repos/{owner}/{repo}",
+                headers={
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": f"Bearer {access_token}",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+
+        payload = self._decode_json(response, "repository_lookup_failed")
+
+        if response.status_code in {403, 404}:
+            raise GitHubOAuthError(
+                "repository_not_accessible",
+                "Repository was not found or the OAuth app does not have access.",
+            )
+
+        if response.status_code != 200 or not isinstance(payload, dict):
+            raise GitHubOAuthError(
+                "repository_lookup_failed",
+                "GitHub repository lookup failed.",
+            )
+
+        return self._decode_repository(payload)
+
     async def collect_repository_evidence(
         self,
         access_token: str,

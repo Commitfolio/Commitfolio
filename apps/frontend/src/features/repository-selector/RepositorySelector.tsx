@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RepositoryLookupForm } from "./RepositoryLookupForm";
 import type {
   RepositoryState,
   RepositorySummary,
@@ -14,7 +15,10 @@ type RepositorySelectorProps = {
   hasMoreRepositories: boolean;
   loadingMore: boolean;
   loadMoreError: string | null;
+  lookupError: string | null;
+  lookupState: "idle" | "loading" | "error";
   onLoadMoreRepositories: () => void;
+  onLookupRepository: (value: string) => void;
   onSelectRepository: (repository: RepositorySummary) => void;
   onVisibilityChange: (visibility: RepositoryVisibility) => void;
   children?: ReactNode;
@@ -29,7 +33,10 @@ export function RepositorySelector({
   hasMoreRepositories,
   loadingMore,
   loadMoreError,
+  lookupError,
+  lookupState,
   onLoadMoreRepositories,
+  onLookupRepository,
   onSelectRepository,
   onVisibilityChange,
   children,
@@ -68,6 +75,14 @@ export function RepositorySelector({
         <p className="empty-state">
           이 필터에 해당하는 저장소가 없습니다. 다른 공개 범위를 선택하거나 OAuth 권한 범위를 확인해 주세요.
         </p>
+      ) : null}
+
+      {repositoryState === "loaded" ? (
+        <RepositoryLookupForm
+          error={lookupError}
+          state={lookupState}
+          onLookupRepository={onLookupRepository}
+        />
       ) : null}
 
       {repositories.length > 0 ? (

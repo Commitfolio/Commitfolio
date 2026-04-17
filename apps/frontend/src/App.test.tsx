@@ -246,9 +246,63 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "저장소 더 불러오기" }));
 
     await waitFor(() => {
-      expect(screen.getByText("SERVICE-MOHAENG/Mohaeng-BE")).toBeInTheDocument();
+      expect(screen.getAllByText("SERVICE-MOHAENG/Mohaeng-BE").length).toBeGreaterThan(0);
     });
     expect(screen.queryByRole("button", { name: "저장소 더 불러오기" })).not.toBeInTheDocument();
+  });
+
+
+  it("looks up an organization repository by full name", async () => {
+    mockFetchSequence(
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: "github:123",
+          github_login: "octocat",
+          connected: true,
+          name: "The Octocat",
+          avatar_url: null,
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          items: [],
+          next_cursor: null,
+        }),
+      },
+      {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: 789,
+          full_name: "SERVICE-MOHAENG/Mohaeng-BE",
+          private: true,
+          owner_type: "Organization",
+          default_branch: "develop",
+          permissions: { admin: false, push: true, pull: true },
+          html_url: "https://github.com/SERVICE-MOHAENG/Mohaeng-BE",
+          description: "Mohaeng backend",
+          updated_at: "2026-04-17T00:00:00Z",
+        }),
+      },
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("저장소 직접 검색")).toBeInTheDocument();
+    });
+
+    await userEvent.type(screen.getByLabelText("저장소 직접 검색"), "SERVICE-MOHAENG/Mohaeng-BE");
+    await userEvent.click(screen.getByRole("button", { name: "저장소 직접 찾기" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("SERVICE-MOHAENG/Mohaeng-BE").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText(/저장소로 분석 작업을 만들 수 있습니다/i)).toBeInTheDocument();
   });
 
   it("creates an analysis job for the selected repository", async () => {
