@@ -75,13 +75,27 @@ export default function App() {
 
   return (
     <main className="shell">
-      <section className="card">
-        <span className="eyebrow">Commitfolio MVP</span>
-        <h1>GitHub 활동을 포트폴리오 문서로 바꾸기</h1>
+      <header className="app-header">
+        <div className="brand-lockup">
+          <span className="mark" aria-hidden="true">CF</span>
+          <div>
+            <p className="eyebrow">Commitfolio MVP</p>
+            <h1>GitHub 활동을 포트폴리오 문서로 바꾸기</h1>
+          </div>
+        </div>
         <p className="lede">
-          GitHub로 로그인한 뒤 포트폴리오로 만들 저장소 하나를 선택하세요. Commit, Pull Request, Issue, Review, 변경 파일 근거를 모아 편집 가능한 포트폴리오 초안을 만듭니다.
+          저장소를 선택하면 Commit, Pull Request, Issue, Review, 변경 파일 근거를 모아 편집 가능한 포트폴리오 초안을 만듭니다.
         </p>
+      </header>
 
+      <section className="workflow-strip" aria-label="작업 흐름">
+        <span>1. GitHub 로그인</span>
+        <span>2. 저장소 선택</span>
+        <span>3. 분석 실행</span>
+        <span>4. 결과 편집·PDF 저장</span>
+      </section>
+
+      <section className="card">
         {statusMessage ? <p className="notice success">{statusMessage}</p> : null}
         {errorMessage ? <p className="notice error">{errorMessage}</p> : null}
 
