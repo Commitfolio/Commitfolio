@@ -49,6 +49,8 @@ that case:
 ```bash
 SESSION_COOKIE_SAME_SITE=none
 SESSION_COOKIE_SECURE=true
+# When Vercel alias + deployment URLs both need access, list them comma-separated.
+BACKEND_CORS_ORIGIN=https://commitfolio.vercel.app,https://commitfolio-<deployment>.vercel.app
 ```
 
 After Render/Vercel URLs exist, run the preview smoke helper from the repository root:
