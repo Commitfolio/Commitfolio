@@ -124,7 +124,7 @@ GITHUB_CLIENT_SECRET=<GitHub OAuth App client secret>
 GITHUB_CALLBACK_URL=https://<render-backend>.onrender.com/api/v1/auth/github/callback
 GITHUB_SCOPE=read:user repo read:org
 FRONTEND_APP_URL=https://<vercel-frontend-url 또는 임시 로컬/preview URL>
-BACKEND_CORS_ORIGIN=https://<vercel-frontend-url 또는 preview URL>
+BACKEND_CORS_ORIGIN=https://<vercel-frontend-url 또는 preview URL>[,https://<vercel-deployment-url>]
 SESSION_SECRET=<32 bytes 이상 랜덤 문자열>
 # Vercel/Render처럼 frontend/backend가 서로 다른 HTTPS 도메인이면 아래 두 값을 설정한다.
 SESSION_COOKIE_SAME_SITE=none
@@ -228,7 +228,7 @@ Codex/OMX가 확인할 것:
 
 주의:
 
-- cross-site preview/prod 배포에서는 Render env에 `SESSION_COOKIE_SAME_SITE=none`, `SESSION_COOKIE_SECURE=true`를 설정해야 frontend XHR에서 session cookie가 전송된다.
+- cross-site preview/prod 배포에서는 Render env에 `SESSION_COOKIE_SAME_SITE=none`, `SESSION_COOKIE_SECURE=true`를 설정해야 frontend XHR에서 session cookie가 전송된다. `BACKEND_CORS_ORIGIN`은 필요 시 Vercel alias와 deployment URL을 쉼표로 함께 넣을 수 있다.
 - public launch 전에는 OAuth App 권한 안내와 broad `repo` scope 문구를 다시 검토한다.
 
 ### Stage 9: public MVP release

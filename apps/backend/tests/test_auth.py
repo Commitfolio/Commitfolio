@@ -900,3 +900,60 @@ def test_session_cookie_settings_are_env_configurable_for_split_domain_preview()
     set_cookie = response.headers["set-cookie"].lower()
     assert "samesite=none" in set_cookie
     assert "secure" in set_cookie
+
+
+def test_cors_preflight_allows_comma_separated_preview_origins() -> None:
+    app = create_app(
+        Settings(
+            github_client_id="test-client-id",
+            github_client_secret="test-client-secret",
+            github_callback_url="http://testserver/api/v1/auth/github/callback",
+            frontend_app_url="https://commitfolio.vercel.app",
+            session_secret="test-session-secret",
+            cors_origin="https://commitfolio.vercel.app, https://commitfolio-preview.vercel.app",
+            database_url="sqlite+pysqlite:///:memory:",
+        )
+    )
+    init_db(app.state.db_engine)
+    client = TestClient(app)
+
+    response = client.options(
+        "/api/v1/me",
+        headers={
+            "Origin": "https://commitfolio-preview.vercel.app",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://commitfolio-preview.vercel.app"
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
+
+def test_cors_preflight_rejects_unknown_origin_even_with_multiple_allowed_origins() -> None:
+    app = create_app(
+        Settings(
+            github_client_id="test-client-id",
+            github_client_secret="test-client-secret",
+            github_callback_url="http://testserver/api/v1/auth/github/callback",
+            frontend_app_url="https://commitfolio.vercel.app",
+            session_secret="test-session-secret",
+            cors_origin="https://commitfolio.vercel.app, https://commitfolio-preview.vercel.app",
+            database_url="sqlite+pysqlite:///:memory:",
+        )
+    )
+    init_db(app.state.db_engine)
+    client = TestClient(app)
+
+    response = client.options(
+        "/api/v1/me",
+        headers={
+            "Origin": "https://malicious.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.headers.get("access-control-allow-origin") is None
+    assert response.headers["access-control-allow-credentials"] == "true"
