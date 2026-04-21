@@ -126,6 +126,9 @@ GITHUB_SCOPE=read:user repo read:org
 FRONTEND_APP_URL=https://<vercel-frontend-url 또는 임시 로컬/preview URL>
 BACKEND_CORS_ORIGIN=https://<vercel-frontend-url 또는 preview URL>
 SESSION_SECRET=<32 bytes 이상 랜덤 문자열>
+# Vercel/Render처럼 frontend/backend가 서로 다른 HTTPS 도메인이면 아래 두 값을 설정한다.
+SESSION_COOKIE_SAME_SITE=none
+SESSION_COOKIE_SECURE=true
 DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require&channel_binding=require
 ```
 
@@ -147,6 +150,7 @@ Codex/OMX가 확인할 것:
 
 ```bash
 curl https://<render-backend>.onrender.com/healthz
+scripts/deployment/preview_smoke.py --backend-url https://<render-backend>.onrender.com
 ```
 
 주의:
@@ -189,6 +193,13 @@ Codex/OMX가 확인할 것:
 - `VITE_API_BASE_URL`이 localhost가 아닌 Render URL인지
 - GitHub OAuth start 링크가 Render backend를 향하는지
 
+```bash
+scripts/deployment/preview_smoke.py \
+  --backend-url https://<render-backend>.onrender.com \
+  --frontend-url https://<vercel-frontend>.vercel.app \
+  --expected-frontend-api-base https://<render-backend>.onrender.com
+```
+
 ### GitHub OAuth App production callback 설정
 
 목표: 배포된 frontend/backend에서 GitHub 로그인 callback이 맞게 돌아오도록 한다.
@@ -217,7 +228,7 @@ Codex/OMX가 확인할 것:
 
 주의:
 
-- 현재 cross-site 배포에서는 session cookie 설정이 막힐 수 있다. 이 경우 Stage 9에서 `SameSite=None; Secure` 같은 production cookie config를 추가해야 한다.
+- cross-site preview/prod 배포에서는 Render env에 `SESSION_COOKIE_SAME_SITE=none`, `SESSION_COOKIE_SECURE=true`를 설정해야 frontend XHR에서 session cookie가 전송된다.
 - public launch 전에는 OAuth App 권한 안내와 broad `repo` scope 문구를 다시 검토한다.
 
 ### Stage 9: public MVP release
@@ -258,6 +269,8 @@ Neon:
 Render:
 - backend URL: https://...
 - env inserted: yes
+- SESSION_COOKIE_SAME_SITE=none set for split-domain HTTPS preview: yes/no
+- SESSION_COOKIE_SECURE=true set for split-domain HTTPS preview: yes/no
 - latest deploy status: pass/fail
 - error log without secrets: ...
 
@@ -269,6 +282,10 @@ Vercel:
 GitHub OAuth:
 - callback URL set to: https://.../api/v1/auth/github/callback
 - login smoke: pass/fail
+
+Preview smoke:
+- command run: `scripts/deployment/preview_smoke.py --backend-url ... --frontend-url ... --expected-frontend-api-base ...`
+- result: pass/fail
 ```
 
 ## 앞으로 기능 개발 브리핑에 반드시 포함할 사용자 액션 섹션
