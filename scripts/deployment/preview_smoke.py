@@ -10,6 +10,7 @@ import argparse
 from dataclasses import dataclass
 from html.parser import HTMLParser
 import json
+import re
 import sys
 from typing import Iterable
 from urllib.error import HTTPError, URLError
@@ -147,6 +148,24 @@ def check_frontend(frontend_url: str) -> tuple[CheckResult, str, list[str]]:
     return CheckResult("frontend", True, f"{frontend_url} returned app HTML"), body, collect_frontend_assets(frontend_url, body)
 
 
+def _contains_runtime_api_base_reference(content: str, expected_api_base: str) -> bool:
+    runtime_patterns = [
+        rf'const\s+\w+\s*=\s*["\']{re.escape(expected_api_base)}["\']',
+        rf'fetch\(`{re.escape(expected_api_base)}',
+        rf'fetch\(["\']{re.escape(expected_api_base)}',
+    ]
+    return any(re.search(pattern, content) for pattern in runtime_patterns)
+
+
+def _contains_localhost_runtime_api_base_reference(content: str) -> bool:
+    localhost_patterns = [
+        r'const\s+\w+\s*=\s*["\']http://localhost:8000["\']',
+        r'fetch\(`http://localhost:8000',
+        r'fetch\(["\']http://localhost:8000',
+    ]
+    return any(re.search(pattern, content) for pattern in localhost_patterns)
+
+
 def check_frontend_api_base(
     frontend_url: str,
     frontend_html: str,
@@ -166,19 +185,20 @@ def check_frontend_api_base(
 
     combined = "\n".join(body for _, body in haystacks)
     if expected_api_base in combined:
-        if "http://localhost:8000" in combined and expected_api_base != "http://localhost:8000":
+        if _contains_localhost_runtime_api_base_reference(combined) and expected_api_base != "http://localhost:8000":
             return CheckResult(
                 "frontend api base",
                 False,
-                "expected API base was found, but localhost backend reference is still present in frontend bundle",
+                "frontend runtime still assigns localhost backend as the API base",
             )
-        return CheckResult("frontend api base", True, f"frontend bundle references {expected_api_base}")
+        if _contains_runtime_api_base_reference(combined, expected_api_base):
+            return CheckResult("frontend api base", True, f"frontend bundle references {expected_api_base}")
 
     checked = ", ".join(name for name, _ in haystacks) or "no bundled scripts"
     return CheckResult(
         "frontend api base",
         False,
-        f"could not find {expected_api_base} in fetched frontend assets ({checked})",
+        f"could not confirm runtime API base {expected_api_base} in fetched frontend assets ({checked})",
     )
 
 
