@@ -68,7 +68,9 @@ export function RepositorySelector({
 
       <p className="privacy-note">
         GitHub OAuth 세션으로 접근 가능한 저장소를 불러옵니다. 이름, 소유자 유형, 공개 범위,
-        기본 브랜치, 기본 권한 같은 메타데이터만 먼저 보여줍니다.
+        기본 브랜치, 기본 권한 같은 메타데이터만 먼저 보여주고, 분석은 사용자가 선택한 저장소
+        하나에 대해서만 실행합니다. 조직 저장소가 비어 있으면 OAuth App 승인 상태도 함께
+        확인해 주세요.
       </p>
 
       {repositoryState === "loading" ? <p>접근 가능한 저장소를 불러오는 중입니다...</p> : null}

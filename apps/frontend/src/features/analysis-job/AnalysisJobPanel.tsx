@@ -146,7 +146,8 @@ export function AnalysisJobPanel({
             </div>
           ) : null}
           <p className="privacy-note">
-            진행 상황은 서버의 durable event log에서 재생됩니다. 연결이 끊겨도 상태 새로고침으로 복구할 수 있습니다.
+            진행 상황은 현재 선택한 저장소 하나에 대한 durable event log에서 재생됩니다. 연결이
+            끊겨도 상태 새로고침으로 복구할 수 있습니다.
           </p>
         </div>
       ) : null}

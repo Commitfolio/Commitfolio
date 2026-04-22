@@ -4,6 +4,7 @@ import { AnalysisJobPanel } from "../features/analysis-job/AnalysisJobPanel";
 import { useAnalysisJobFlow } from "../features/analysis-job/useAnalysisJobFlow";
 import { getStatusMessage } from "../features/github-auth/auth-status";
 import { SessionPanel } from "../features/github-auth/SessionPanel";
+import { PublicMvpGuidePanel } from "../features/mvp-readiness/PublicMvpGuidePanel";
 import { RepositorySelector } from "../features/repository-selector/RepositorySelector";
 import { useRepositorySelector } from "../features/repository-selector/useRepositorySelector";
 import { ResultEditor } from "../features/result-editor/ResultEditor";
@@ -135,6 +136,8 @@ export default function App() {
         <span>4. 결과 편집·PDF 저장</span>
       </section>
 
+      <PublicMvpGuidePanel />
+
       <section className="card">
         {statusMessage ? <p className="notice success">{statusMessage}</p> : null}
         {errorMessage ? <p className="notice error">{errorMessage}</p> : null}
@@ -244,14 +247,6 @@ export default function App() {
           </section>
         ) : null}
 
-        <div className="meta">
-          <p>
-            GitHub 로그인 시작 URL: <code>{authStartUrl}</code>
-          </p>
-          <p>
-            백엔드 주소가 <code>http://localhost:8000</code>이 아니면 <code>VITE_API_BASE_URL</code>을 설정하세요.
-          </p>
-        </div>
       </section>
     </main>
   );

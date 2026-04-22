@@ -67,6 +67,8 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByText("GitHub로 계속하기")).toBeInTheDocument();
     });
+    expect(screen.getByText("공개 MVP 전 체크할 것")).toBeInTheDocument();
+    expect(screen.queryByText(/GitHub 로그인 시작 URL:/)).not.toBeInTheDocument();
   });
 
   it("renders the signed-in user details", async () => {
@@ -178,6 +180,9 @@ describe("App", () => {
 
     expect(
       screen.getByText(/저장소로 분석 작업을 만들 수 있습니다/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/분석은 사용자가 선택한 저장소 하나에 대해서만 실행합니다/i),
     ).toBeInTheDocument();
   });
 
