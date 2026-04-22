@@ -7,7 +7,7 @@
 - Issue: https://github.com/Commitfolio/Commitfolio/issues/40
 - PRD: `docs/prd/mvp-hardening.md`
 - Branch: `feat/40-mvp-hardening`
-- PR:
+- PR: https://github.com/Commitfolio/Commitfolio/pull/41
 
 ## Objective
 public MVP 직전 baseline으로서 Stage 9 문서 체계, public-facing UX copy, README/env/setup 안내를 정리한다.
@@ -58,6 +58,7 @@ git diff --check
 - 2026-04-22: GitHub issue #40과 `feat/40-mvp-hardening` 브랜치를 만들었다.
 - 2026-04-22: public MVP readiness 안내 패널, permission/privacy copy, README baseline 문서를 추가했다.
 - 2026-04-22: frontend lint/typecheck/test/build와 `git diff --check`를 통과했다.
+- 2026-04-22: draft PR #41을 열어 develop 기준 검토 상태로 전환했다.
 
 ## Completion Notes
 - What changed: Stage 9 전용 PRD/task/OMX plan을 만들고, 앱에서 raw 개발자용 meta 안내를 제거한 뒤 public MVP readiness 패널과 권한/개인정보 copy를 추가했다. 또한 README를 local setup, env, preview readiness, 샘플 검증, 데모 흐름 중심으로 재작성했다.
