@@ -150,7 +150,10 @@ Codex/OMX가 확인할 것:
 
 ```bash
 curl https://<render-backend>.onrender.com/healthz
-scripts/deployment/preview_smoke.py --backend-url https://<render-backend>.onrender.com
+scripts/deployment/preview_smoke.py \
+  --mode backend \
+  --backend-url https://<render-backend>.onrender.com \
+  --report-json .omx/reports/render-backend-smoke.json
 ```
 
 주의:
@@ -195,10 +198,19 @@ Codex/OMX가 확인할 것:
 
 ```bash
 scripts/deployment/preview_smoke.py \
+  --mode preview \
   --backend-url https://<render-backend>.onrender.com \
   --frontend-url https://<vercel-frontend>.vercel.app \
-  --expected-frontend-api-base https://<render-backend>.onrender.com
+  --expected-frontend-api-base https://<render-backend>.onrender.com \
+  --report-json .omx/reports/preview-smoke.json
 ```
+
+report JSON에는 각 체크 결과, 실패 수, 다음 액션 힌트가 들어가므로 PR 코멘트나 작업 문서에 그대로 첨부할 수 있다.
+
+주의:
+
+- Vercel에는 custom domain(`https://commitfolio.vercel.app`), deployment URL, PR branch preview alias(`https://commitfolio-git-...vercel.app`)가 서로 다를 수 있다.
+- PR preview에서 실제 로그인/세션 흐름까지 확인하려면 `BACKEND_CORS_ORIGIN`에 **사용할 정확한 preview alias**도 포함해야 한다.
 
 ### GitHub OAuth App production callback 설정
 
@@ -255,6 +267,26 @@ Codex/OMX가 할 일:
 - merge 가능한 checks 확인
 - main merge 후 deployment pipeline 확인
 - `/healthz`, frontend URL, OAuth smoke, DB migration 상태 보고
+- release smoke JSON artifact와 사용자 시나리오 확인 결과를 함께 정리
+
+공개 배포 증적 예시:
+
+```bash
+scripts/deployment/preview_smoke.py \
+  --mode release \
+  --backend-url https://<render-backend>.onrender.com \
+  --frontend-url https://<vercel-frontend>.vercel.app \
+  --expected-frontend-api-base https://<render-backend>.onrender.com \
+  --report-json .omx/reports/release-smoke.json
+```
+
+최소 완료 증적:
+
+- `.omx/reports/release-smoke.json`
+- public/private/org 저장소 샘플 검증 결과 요약
+- OAuth login smoke pass/fail
+- latest Render/Vercel deploy status
+- migration 실행 여부
 
 ## 사용자가 Codex에게 전달하면 좋은 정보 템플릿
 
