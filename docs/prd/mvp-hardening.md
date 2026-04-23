@@ -26,6 +26,7 @@
 - public MVP 기준의 empty/error/privacy/setup copy를 앱에 반영한다.
 - README를 local setup, env, preview/prod readiness, 샘플 검증 흐름 중심으로 재구성한다.
 - 실제 외부 배포 전에 개발자와 운영자가 따라갈 최소 검증 절차를 남긴다.
+- preview/release smoke 결과를 구조화된 증적(JSON report)로 남길 수 있게 한다.
 
 ## Non-goals
 - Render/Vercel/Neon/GitHub OAuth 콘솔 리소스를 Codex가 직접 생성하지 않는다.
@@ -40,6 +41,8 @@
 - raw 개발자용 meta 안내 제거 또는 public-friendly 안내로 교체
 - root `README.md`를 실행/환경/검증/데모 중심으로 확장
 - public/private/org 샘플 검증 체크리스트 문서화
+- `scripts/deployment/preview_smoke.py`를 preview/release smoke 증적 생성 도구로 확장
+- operator playbook에 report artifact와 후속 조치 기준 추가
 
 ### Out of scope
 - 실제 production env/secrets 입력
@@ -60,6 +63,8 @@
 - README는 frontend/backend 로컬 실행 순서와 핵심 env 이름을 설명해야 한다.
 - README는 preview/prod readiness 및 public/private/org 저장소 검증 시나리오를 설명해야 한다.
 - Stage 9 baseline 산출물은 GitHub issue와 브랜치 규칙에 연결돼야 한다.
+- smoke script는 mode별 요구사항과 JSON report artifact를 지원해야 한다.
+- release smoke는 `/healthz`, OAuth start, unauthenticated `/api/v1/me`, CORS, frontend API base를 구조화해 기록해야 한다.
 
 ## UX / UI Notes
 - hero 아래에 public MVP readiness 안내 패널을 추가한다.
@@ -80,13 +85,16 @@
 - [x] 앱에서 raw auth/backend meta 안내가 public-friendly hardening 안내로 대체된다.
 - [x] signed-out / signed-in / repository selection / analysis copy가 permission/privacy/setup 기준을 설명한다.
 - [x] `README.md`가 local setup, env, preview readiness, public/private/org validation, demo flow를 설명한다.
-- [x] frontend lint/typecheck/test/build와 `git diff --check`가 통과한다.
+- [x] smoke script가 release mode와 JSON report artifact를 지원한다.
+- [x] operator playbook과 README가 report artifact 기준으로 갱신된다.
+- [x] smoke script 회귀 테스트와 관련 검증이 통과한다.
 
 ## Verification Plan
 - Regression: `npm --prefix apps/frontend run lint`
 - Regression: `npm --prefix apps/frontend run typecheck`
 - Regression: `npm --prefix apps/frontend run test -- --run`
 - Regression: `npm --prefix apps/frontend run build`
+- Regression: `python3 -m unittest discover -s scripts/deployment -p 'test_*.py'`
 - Regression: `git diff --check`
 
 ## Risks

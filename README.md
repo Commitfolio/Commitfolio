@@ -96,11 +96,35 @@ Stage 9 기준으로 공개 배포 전에는 아래를 확인해야 합니다.
 
 ```bash
 scripts/deployment/preview_smoke.py \
+  --mode preview \
   --backend-url http://localhost:8000 \
-  --frontend-url http://localhost:5173
+  --frontend-url http://localhost:5173 \
+  --report-json .omx/reports/local-preview-smoke.json
 ```
 
 실제 Render / Vercel preview URL이 준비되면 외부 URL로 다시 실행합니다.
+배포 증적을 남기려면 `--report-json`으로 구조화된 결과를 저장합니다.
+
+### Release smoke artifact
+
+```bash
+scripts/deployment/preview_smoke.py \
+  --mode release \
+  --backend-url https://<render-backend>.onrender.com \
+  --frontend-url https://<vercel-frontend>.vercel.app \
+  --expected-frontend-api-base https://<render-backend>.onrender.com \
+  --report-json .omx/reports/release-smoke.json
+```
+
+release smoke report에는 다음이 포함됩니다.
+
+- backend health
+- unauthenticated `/api/v1/me` contract와 `X-Request-ID`
+- GitHub OAuth start redirect
+- frontend app shell
+- CORS preflight
+- frontend runtime API base
+- 다음 운영 액션 힌트
 
 ### 운영자 참고 문서
 
@@ -141,6 +165,7 @@ scripts/deployment/preview_smoke.py \
 - 조직 승인된 계정에서는 목록/직접 조회가 가능
 - 미승인 상태에서는 권한 안내 또는 접근 불가 메시지가 명확함
 - permission failure copy가 사용자 행동(재로그인, 승인 요청)을 안내함
+- release 전에는 위 세 케이스의 결과를 smoke report와 함께 기록함
 
 ## 데모 흐름
 
