@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 import json
 import re
+from pathlib import Path
 import sys
 from typing import Iterable
 from urllib.error import HTTPError, URLError
@@ -77,6 +79,29 @@ def check_backend_health(backend_url: str) -> CheckResult:
     if status == 200 and parsed.get("status") == "ok":
         return CheckResult("backend health", True, f"{url} returned 200 {{status: ok}}")
     return CheckResult("backend health", False, f"{url} returned {status}: {body[:200]}")
+
+
+def check_me_endpoint_contract(backend_url: str) -> CheckResult:
+    url = f"{backend_url}/api/v1/me"
+    try:
+        status, headers, body = read_text(url)
+        parsed = json.loads(body)
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        return CheckResult("me endpoint contract", False, f"{url} failed: {exc}")
+
+    error = parsed.get("error", {})
+    request_id = headers.get("X-Request-ID") or headers.get("x-request-id")
+    if status == 401 and error.get("code") == "unauthenticated" and request_id:
+        return CheckResult(
+            "me endpoint contract",
+            True,
+            f"{url} returned 401 unauthenticated with X-Request-ID={request_id}",
+        )
+    return CheckResult(
+        "me endpoint contract",
+        False,
+        f"expected 401 unauthenticated with X-Request-ID, got status={status}, body={body[:200]}",
+    )
 
 
 def check_oauth_start(backend_url: str) -> CheckResult:
@@ -207,21 +232,129 @@ def print_result(result: CheckResult) -> None:
     print(f"[{icon}] {result.name}: {result.detail}")
 
 
+def summarize_results(results: list[CheckResult]) -> dict[str, int | bool]:
+    failed = sum(1 for result in results if not result.ok)
+    return {
+        "total": len(results),
+        "failed": failed,
+        "passed": len(results) - failed,
+        "ok": failed == 0,
+    }
+
+
+def validate_mode_requirements(
+    mode: str,
+    *,
+    frontend_url: str | None,
+    expected_api_base: str | None,
+) -> None:
+    if mode in {"preview", "release"} and not frontend_url:
+        raise ValueError(f"--mode {mode} requires --frontend-url")
+    if mode == "release" and not expected_api_base:
+        raise ValueError("--mode release requires --expected-frontend-api-base")
+
+
+def build_followup_steps(mode: str, results: list[CheckResult]) -> list[str]:
+    followups: list[str] = []
+    failed_checks = {result.name for result in results if not result.ok}
+
+    mode_hints = {
+        "backend": "backend smoke가 통과하면 frontend 연결 후 preview/release smoke로 확장합니다.",
+        "preview": "preview smoke 후에는 실제 브라우저에서 GitHub 로그인과 저장소 선택 흐름을 한 번 더 확인합니다.",
+        "release": "release smoke 후에는 public/private/org 저장소 샘플 검증 결과와 deploy URL을 PR/작업 문서에 기록합니다.",
+    }
+    followups.append(mode_hints[mode])
+
+    failure_hints = {
+        "backend health": "backend health 실패 시 Render deploy 로그와 DATABASE_URL/PORT 설정을 다시 확인합니다.",
+        "me endpoint contract": "me endpoint contract 실패 시 세션 미들웨어, observability, unauthenticated envelope 응답을 점검합니다.",
+        "oauth start": "oauth start 실패 시 GITHUB_CLIENT_ID/GITHUB_CALLBACK_URL과 GitHub OAuth callback URL을 맞춥니다.",
+        "frontend": "frontend 실패 시 Vercel deploy 상태와 build output을 확인합니다.",
+        "cors preflight": "CORS 실패 시 BACKEND_CORS_ORIGIN, SESSION_COOKIE_SAME_SITE, SESSION_COOKIE_SECURE를 점검합니다.",
+        "frontend api base": "frontend api base 실패 시 VITE_API_BASE_URL과 배포 후 번들 교체 여부를 확인합니다.",
+    }
+    for name in (
+        "backend health",
+        "me endpoint contract",
+        "oauth start",
+        "frontend",
+        "cors preflight",
+        "frontend api base",
+    ):
+        if name in failed_checks:
+            followups.append(failure_hints[name])
+
+    if not failed_checks:
+        followups.append("실패한 체크가 없으면 operator playbook의 다음 사용자 액션만 진행하면 됩니다.")
+
+    return followups
+
+
+def write_json_report(
+    path: str,
+    *,
+    mode: str,
+    backend_url: str,
+    frontend_url: str | None,
+    expected_api_base: str | None,
+    results: list[CheckResult],
+) -> None:
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "mode": mode,
+        "backend_url": backend_url,
+        "frontend_url": frontend_url,
+        "expected_frontend_api_base": expected_api_base,
+        "summary": summarize_results(results),
+        "results": [
+            {
+                "name": result.name,
+                "ok": result.ok,
+                "detail": result.detail,
+            }
+            for result in results
+        ],
+        "next_steps": build_followup_steps(mode, results),
+    }
+
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke-check Commitfolio preview deployment URLs.")
+    parser.add_argument(
+        "--mode",
+        choices=("backend", "preview", "release"),
+        default="preview",
+        help="backend=backend-only, preview=split-domain preview sanity, release=public release evidence",
+    )
     parser.add_argument("--backend-url", required=True, help="Backend base URL, e.g. https://app.onrender.com")
     parser.add_argument("--frontend-url", help="Frontend base URL, e.g. https://app.vercel.app")
     parser.add_argument(
         "--expected-frontend-api-base",
         help="Expected VITE_API_BASE_URL embedded in the frontend production bundle.",
     )
+    parser.add_argument(
+        "--report-json",
+        help="Write a structured JSON smoke report to this path.",
+    )
     args = parser.parse_args()
 
     backend_url = normalize_url(args.backend_url)
     frontend_url = normalize_url(args.frontend_url) if args.frontend_url else None
     expected_api_base = normalize_url(args.expected_frontend_api_base) if args.expected_frontend_api_base else None
+    try:
+        validate_mode_requirements(args.mode, frontend_url=frontend_url, expected_api_base=expected_api_base)
+    except ValueError as error:
+        parser.error(str(error))
 
-    results: list[CheckResult] = [check_backend_health(backend_url), check_oauth_start(backend_url)]
+    results: list[CheckResult] = [
+        check_backend_health(backend_url),
+        check_me_endpoint_contract(backend_url),
+        check_oauth_start(backend_url),
+    ]
 
     frontend_html = ""
     script_urls: list[str] = []
@@ -236,11 +369,27 @@ def main() -> int:
     for result in results:
         print_result(result)
 
+    next_steps = build_followup_steps(args.mode, results)
+    print("\nNext steps:")
+    for step in next_steps:
+        print(f"- {step}")
+
+    if args.report_json:
+        write_json_report(
+            args.report_json,
+            mode=args.mode,
+            backend_url=backend_url,
+            frontend_url=frontend_url,
+            expected_api_base=expected_api_base,
+            results=results,
+        )
+        print(f"\nJSON report written to {args.report_json}")
+
     failed = [result for result in results if not result.ok]
     if failed:
-        print(f"\n{len(failed)} check(s) failed.", file=sys.stderr)
+        print(f"\n{len(failed)} check(s) failed for {args.mode} smoke.", file=sys.stderr)
         return 1
-    print("\nAll preview smoke checks passed.")
+    print(f"\nAll {args.mode} smoke checks passed.")
     return 0
 
 
