@@ -207,6 +207,11 @@ scripts/deployment/preview_smoke.py \
 
 report JSON에는 각 체크 결과, 실패 수, 다음 액션 힌트가 들어가므로 PR 코멘트나 작업 문서에 그대로 첨부할 수 있다.
 
+주의:
+
+- Vercel에는 custom domain(`https://commitfolio.vercel.app`), deployment URL, PR branch preview alias(`https://commitfolio-git-...vercel.app`)가 서로 다를 수 있다.
+- PR preview에서 실제 로그인/세션 흐름까지 확인하려면 `BACKEND_CORS_ORIGIN`에 **사용할 정확한 preview alias**도 포함해야 한다.
+
 ### GitHub OAuth App production callback 설정
 
 목표: 배포된 frontend/backend에서 GitHub 로그인 callback이 맞게 돌아오도록 한다.
