@@ -11,13 +11,14 @@ export function ResultDocument({ result }: ResultDocumentProps) {
       <div>
         <span className="eyebrow subtle">포트폴리오 결과</span>
         <h2 id="portfolio-result-title">{result.headline}</h2>
-        <p className="privacy-note">{result.repository_full_name} · version {result.version}</p>
-        <p className="enhancement-status">
+        <div className="result-summary-badges">
+          <span className="badge subtle">{result.repository_full_name}</span>
+          <span className="badge">version {result.version}</span>
           <span className={`badge ${getEnhancementBadgeClass(result.enhancement_status)}`}>
             {getEnhancementLabel(result.enhancement_status, result.enhancement_message)}
           </span>
-          {result.enhancement_model ? <span className="privacy-note"> 모델: {result.enhancement_model}</span> : null}
-        </p>
+          {result.enhancement_model ? <span className="badge">모델: {result.enhancement_model}</span> : null}
+        </div>
       </div>
 
       <ResultSection title="프로젝트 개요" sectionKey="project_overview" result={result}>

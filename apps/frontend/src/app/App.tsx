@@ -23,6 +23,7 @@ export default function App() {
   const statusMessage = useMemo(() => getStatusMessage(window.location.search), []);
   const analysis = useAnalysisJobFlow();
   const results = useResultViewer();
+  const isSignedIn = sessionState === "signed-in";
   const resetAnalysisJob = analysis.resetAnalysisJob;
   const resetResult = results.resetResult;
   const resetAnalysisAndResult = useCallback(() => {
@@ -41,9 +42,12 @@ export default function App() {
         setUser(currentUser);
         setSessionState(currentUser ? "signed-in" : "signed-out");
       } catch (error) {
-        setErrorMessage(
-          error instanceof Error ? error.message : "세션 상태를 불러오는 중 알 수 없는 오류가 발생했습니다.",
-        );
+        const fallbackMessage = "세션 상태를 불러오는 중 알 수 없는 오류가 발생했습니다.";
+        const message =
+          error instanceof Error && error.message && error.message !== "Failed to fetch"
+            ? error.message
+            : fallbackMessage;
+        setErrorMessage(message);
         setSessionState("signed-out");
       }
     }
@@ -81,9 +85,11 @@ export default function App() {
           <span>Commitfolio</span>
         </a>
         <div className="topbar-links" aria-label="제품 흐름">
-          <a href="#repository-selector-title">Projects</a>
-          <a href="#result-viewer-title">Portfolio</a>
-          <span className="session-chip">{sessionState === "signed-in" ? "Connected" : "Preview"}</span>
+          <a href="#repository-selector-title">저장소</a>
+          <a href="#result-viewer-title">결과 문서</a>
+          <span className={`session-chip ${isSignedIn ? "active" : ""}`}>
+            {isSignedIn ? "Connected" : "Preview"}
+          </span>
         </div>
       </nav>
 
@@ -94,6 +100,30 @@ export default function App() {
           <p className="lede">
             저장소를 선택하면 Commit, Pull Request, Issue, Review, 변경 파일 근거를 큐레이션해 편집 가능한 포트폴리오 초안을 만듭니다.
           </p>
+          <div className="hero-support">
+            <div className="hero-cta-row">
+              {isSignedIn ? (
+                <a className="button primary" href="#repository-selector-title">
+                  저장소 선택으로 이동
+                </a>
+              ) : (
+                <a className="button primary" href={authStartUrl}>
+                  GitHub 연결 시작
+                </a>
+              )}
+              <a
+                className="button tertiary"
+                href={isSignedIn ? "#result-viewer-title" : "#repository-selector-title"}
+              >
+                {isSignedIn ? "결과 영역 보기" : "흐름 먼저 보기"}
+              </a>
+            </div>
+            <p className="hero-support-text">
+              {isSignedIn
+                ? "연결이 끝났다면 저장소 선택부터 분석 실행, 결과 생성까지 순서대로 진행하면 됩니다."
+                : "첫 단계는 GitHub 연결입니다. 연결 후 접근 가능한 저장소만 불러오고, 분석은 선택한 저장소 하나에 대해서만 실행합니다."}
+            </p>
+          </div>
           <div className="hero-actions" aria-label="핵심 가치">
             <span className="badge subtle">Evidence-backed</span>
             <span className="badge subtle">Editorial document</span>
@@ -129,10 +159,22 @@ export default function App() {
       </header>
 
       <section className="workflow-strip" aria-label="작업 흐름">
-        <span>1. GitHub 로그인</span>
-        <span>2. 저장소 선택</span>
-        <span>3. 분석 실행</span>
-        <span>4. 결과 편집·PDF 저장</span>
+        <article className="workflow-card">
+          <strong>1. GitHub 로그인</strong>
+          <p>접근 가능한 저장소 범위를 연결합니다.</p>
+        </article>
+        <article className="workflow-card">
+          <strong>2. 저장소 선택</strong>
+          <p>포트폴리오로 바꿀 저장소 하나를 고릅니다.</p>
+        </article>
+        <article className="workflow-card">
+          <strong>3. 분석 실행</strong>
+          <p>진행률과 수집 근거를 확인합니다.</p>
+        </article>
+        <article className="workflow-card">
+          <strong>4. 결과 편집·PDF 저장</strong>
+          <p>문장을 다듬고 문서 형태로 내보냅니다.</p>
+        </article>
       </section>
 
       <section className="card">
@@ -147,7 +189,7 @@ export default function App() {
           onLogout={handleLogout}
         />
 
-        {sessionState === "signed-in" ? (
+        {isSignedIn ? (
           <RepositorySelector
             repositories={repositories.repositories}
             repositoryError={repositories.repositoryError}
@@ -201,14 +243,14 @@ export default function App() {
           </RepositorySelector>
         ) : null}
 
-        {sessionState === "signed-in" ? (
+        {isSignedIn ? (
           <section className="panel result-panel" aria-labelledby="result-viewer-title">
             <div className="section-heading">
               <div>
                 <span className="eyebrow subtle">결과 문서</span>
                 <h2 id="result-viewer-title">포트폴리오 결과</h2>
               </div>
-              <button className="button secondary" type="button" onClick={() => void results.loadRecentResults()}>
+              <button className="button tertiary" type="button" onClick={() => void results.loadRecentResults()}>
                 최근 결과 불러오기
               </button>
             </div>
@@ -244,14 +286,16 @@ export default function App() {
           </section>
         ) : null}
 
-        <div className="meta">
-          <p>
-            GitHub 로그인 시작 URL: <code>{authStartUrl}</code>
-          </p>
-          <p>
-            백엔드 주소가 <code>http://localhost:8000</code>이 아니면 <code>VITE_API_BASE_URL</code>을 설정하세요.
-          </p>
-        </div>
+        {import.meta.env.DEV ? (
+          <div className="meta">
+            <p>
+              GitHub 로그인 시작 URL: <code>{authStartUrl}</code>
+            </p>
+            <p>
+              백엔드 주소가 <code>http://localhost:8000</code>이 아니면 <code>VITE_API_BASE_URL</code>을 설정하세요.
+            </p>
+          </div>
+        ) : null}
       </section>
     </main>
   );

@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 
-const originalFetch = global.fetch;
+const originalFetch = globalThis.fetch;
 
 class FakeEventSource {
   static instances: FakeEventSource[] = [];
@@ -33,7 +33,7 @@ class FakeEventSource {
 }
 
 function mockFetchSequence(...responses: Array<Partial<Response>>) {
-  global.fetch = vi.fn().mockImplementation(async () => {
+  globalThis.fetch = vi.fn().mockImplementation(async () => {
     const response = responses.shift();
 
     if (!response) {
@@ -51,7 +51,7 @@ function mockFetchSequence(...responses: Array<Partial<Response>>) {
 
 describe("App", () => {
   afterEach(() => {
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     FakeEventSource.instances = [];
