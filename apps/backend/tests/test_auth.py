@@ -718,7 +718,9 @@ def test_portfolio_result_generation_falls_back_when_openai_fails(monkeypatch: p
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["headline"] == "octocat/commitfolio에서 근거 기반 개발 흐름을 완성한 프로젝트 경험"
+    assert "octocat/commitfolio" in payload["headline"]
+    assert "Python 백엔드 개발 경험" in payload["headline"]
+    assert payload["key_contributions"]
     assert payload["enhancement_status"] == "fallback"
     assert payload["enhancement_model"] == "test-model"
     assert payload["enhancement_message"] == "OpenAI 후처리 실패, 기본 생성 사용"

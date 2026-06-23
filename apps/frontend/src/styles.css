@@ -838,6 +838,42 @@ h3 {
   gap: 12px;
 }
 
+.result-highlight-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.result-highlight-card,
+.result-lead {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(45, 91, 219, 0.1);
+  border-radius: var(--radius-lg);
+  background: rgba(45, 91, 219, 0.04);
+}
+
+.result-highlight-card span {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.result-highlight-card strong {
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.result-lead p {
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.72;
+}
+
 .result-document h2 {
   font-size: clamp(2rem, 5vw, 3.35rem);
   line-height: 1.08;
@@ -925,6 +961,10 @@ h3 {
   }
 
   .workflow-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .result-highlight-grid {
     grid-template-columns: 1fr;
   }
 

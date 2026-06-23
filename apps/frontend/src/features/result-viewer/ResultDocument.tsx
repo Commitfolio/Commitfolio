@@ -6,6 +6,21 @@ type ResultDocumentProps = {
 };
 
 export function ResultDocument({ result }: ResultDocumentProps) {
+  const summaryCards = [
+    {
+      label: "대표 기술",
+      value: result.tech_stack.slice(0, 4).join(" · ") || "기술 추론 없음",
+    },
+    {
+      label: "핵심 기여",
+      value: `${result.key_contributions.length}개 포인트`,
+    },
+    {
+      label: "근거 링크",
+      value: `${result.evidence_links.length}개 연결`,
+    },
+  ];
+
   return (
     <article className="result-document" aria-labelledby="portfolio-result-title">
       <div>
@@ -21,12 +36,22 @@ export function ResultDocument({ result }: ResultDocumentProps) {
         </div>
       </div>
 
+      <div className="result-highlight-grid" aria-label="결과 요약">
+        {summaryCards.map((card) => (
+          <div className="result-highlight-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <section className="result-lead">
+        <span className="eyebrow subtle">역할 요약</span>
+        <p>{result.role_summary}</p>
+      </section>
+
       <ResultSection title="프로젝트 개요" sectionKey="project_overview" result={result}>
         <p>{result.project_overview}</p>
-      </ResultSection>
-
-      <ResultSection title="담당 역할" sectionKey="role_summary" result={result}>
-        <p>{result.role_summary}</p>
       </ResultSection>
 
       <ResultSection title="핵심 기여" sectionKey="key_contributions" result={result}>
@@ -37,7 +62,7 @@ export function ResultDocument({ result }: ResultDocumentProps) {
         </ul>
       </ResultSection>
 
-      <ResultSection title="기술 스택" sectionKey="tech_stack" result={result}>
+      <ResultSection title="사용 기술" sectionKey="tech_stack" result={result}>
         <div className="repository-meta">
           {result.tech_stack.map((item) => (
             <span className="badge" key={item}>{item}</span>
