@@ -43,7 +43,13 @@ export function ResultEditor({ result, saving, onSave }: ResultEditorProps) {
 
   return (
     <form className="result-editor" onSubmit={handleSubmit}>
-      <h3>결과 직접 수정</h3>
+      <div>
+        <span className="eyebrow subtle">편집</span>
+        <h3>결과 직접 수정</h3>
+      </div>
+      <p className="privacy-note">
+        초안을 그대로 두지 말고, 역할과 성과가 더 분명하게 보이도록 문장을 다듬은 뒤 저장합니다.
+      </p>
       <label>
         <span>한 줄 소개</span>
         <input aria-label="한 줄 소개" value={headline} onChange={(event) => setHeadline(event.target.value)} />
@@ -72,9 +78,11 @@ export function ResultEditor({ result, saving, onSave }: ResultEditorProps) {
         <span>면접 예상 질문</span>
         <textarea value={interviewQuestions} onChange={(event) => setInterviewQuestions(event.target.value)} />
       </label>
-      <button className="button primary" type="submit" disabled={saving}>
-        {saving ? "저장 중..." : "수정 내용 저장"}
-      </button>
+      <div className="action-row">
+        <button className="button primary" type="submit" disabled={saving}>
+          {saving ? "저장 중..." : "수정 내용 저장"}
+        </button>
+      </div>
     </form>
   );
 }
