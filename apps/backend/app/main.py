@@ -1,104 +1,47 @@
 from __future__ import annotations
 
-from typing import Literal, Optional, TypedDict, Union
-from urllib.parse import urlencode
-import secrets
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Optional
 
-from fastapi import Depends, FastAPI, Query, Request, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, Response
-from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
+from app.api.dependencies import get_github_service
+from app.api.routes import analysis_events, analysis_jobs, auth, repositories, results
 from app.config import Settings, get_settings
-from app.github_oauth import GitHubOAuthError, GitHubOAuthService
+from app.db import create_db_engine, create_session_factory, init_db
+from app.observability import configure_logging, request_logging_middleware, unexpected_exception_handler
 
 
-class SessionUser(TypedDict):
-    id: str
-    github_login: str
-    connected: bool
-    name: Optional[str]
-    avatar_url: Optional[str]
-
-
-class MeResponse(BaseModel):
-    id: str
-    github_login: str
-    connected: bool
-    name: Optional[str] = None
-    avatar_url: Optional[str] = None
-
-
-class ErrorDetail(BaseModel):
-    code: str
-    message: str
-
-
-class ErrorEnvelope(BaseModel):
-    error: ErrorDetail
-
-
-class RepositoryPermissionsResponse(BaseModel):
-    admin: bool
-    push: bool
-    pull: bool
-
-
-class RepositoryResponse(BaseModel):
-    id: int
-    full_name: str
-    private: bool
-    owner_type: str
-    default_branch: str
-    permissions: RepositoryPermissionsResponse
-    html_url: str
-    description: Optional[str] = None
-    updated_at: Optional[str] = None
-
-
-class RepositoryListResponse(BaseModel):
-    items: list[RepositoryResponse]
-    next_cursor: Optional[str] = None
-
-
-def build_frontend_redirect(frontend_app_url: str, **query: str) -> str:
-    encoded = urlencode(query)
-    return f"{frontend_app_url}/?{encoded}" if encoded else frontend_app_url
-
-
-def get_github_service(request: Request) -> GitHubOAuthService:
-    settings: Settings = request.app.state.settings
-    return GitHubOAuthService(settings)
-
-
-def build_error_response(status_code: int, code: str, message: str) -> JSONResponse:
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "error": {
-                "code": code,
-                "message": message,
-            }
-        },
-    )
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    init_db(app.state.db_engine)
+    yield
 
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     resolved_settings = settings or get_settings()
-    app = FastAPI(title="Commitfolio API", version="0.1.0")
+    configure_logging(resolved_settings.log_level)
+    app = FastAPI(title="Commitfolio API", version="0.1.0", lifespan=lifespan)
     app.state.settings = resolved_settings
     app.state.github_access_tokens = {}
+    app.state.db_engine = create_db_engine(resolved_settings.database_url)
+    app.state.db_session_factory = create_session_factory(app.state.db_engine)
+
+    app.middleware("http")(request_logging_middleware)
+    app.add_exception_handler(Exception, unexpected_exception_handler)
 
     app.add_middleware(
         SessionMiddleware,
         secret_key=resolved_settings.session_secret,
-        same_site="lax",
-        https_only=False,
+        same_site=resolved_settings.session_cookie_same_site,
+        https_only=resolved_settings.session_cookie_secure,
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[resolved_settings.cors_origin],
+        allow_origins=resolved_settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -108,176 +51,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     async def healthcheck() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/api/v1/auth/github/start")
-    async def start_github_oauth(
-        request: Request,
-        github: GitHubOAuthService = Depends(get_github_service),
-    ) -> RedirectResponse:
-        if not github.is_configured():
-            return RedirectResponse(
-                build_frontend_redirect(
-                    resolved_settings.frontend_app_url,
-                    auth_error="backend_not_configured",
-                ),
-                status_code=status.HTTP_302_FOUND,
-            )
-
-        state = secrets.token_urlsafe(32)
-        request.session["oauth_state"] = state
-        return RedirectResponse(github.build_authorize_url(state), status_code=status.HTTP_302_FOUND)
-
-    @app.get("/api/v1/auth/github/callback")
-    async def finish_github_oauth(
-        request: Request,
-        code: Optional[str] = None,
-        state: Optional[str] = None,
-        error: Optional[str] = None,
-        github: GitHubOAuthService = Depends(get_github_service),
-    ) -> RedirectResponse:
-        if error:
-            return RedirectResponse(
-                build_frontend_redirect(resolved_settings.frontend_app_url, auth_error="access_denied"),
-                status_code=status.HTTP_302_FOUND,
-            )
-
-        expected_state = request.session.get("oauth_state")
-
-        if not state or not expected_state or state != expected_state:
-            request.session.pop("oauth_state", None)
-            return RedirectResponse(
-                build_frontend_redirect(resolved_settings.frontend_app_url, auth_error="invalid_state"),
-                status_code=status.HTTP_302_FOUND,
-            )
-
-        if not code:
-            request.session.pop("oauth_state", None)
-            return RedirectResponse(
-                build_frontend_redirect(resolved_settings.frontend_app_url, auth_error="missing_code"),
-                status_code=status.HTTP_302_FOUND,
-            )
-
-        try:
-            access_token = await github.exchange_code(code)
-            profile = await github.fetch_user(access_token)
-        except GitHubOAuthError as error_response:
-            request.session.pop("oauth_state", None)
-            return RedirectResponse(
-                build_frontend_redirect(
-                    resolved_settings.frontend_app_url,
-                    auth_error=error_response.code,
-                ),
-                status_code=status.HTTP_302_FOUND,
-            )
-
-        request.session.pop("oauth_state", None)
-        previous_token_id = request.session.pop("github_token_id", None)
-        if previous_token_id:
-            request.app.state.github_access_tokens.pop(previous_token_id, None)
-
-        github_token_id = secrets.token_urlsafe(32)
-        request.app.state.github_access_tokens[github_token_id] = access_token
-        request.session["github_token_id"] = github_token_id
-        request.session["user"] = {
-            "id": f"github:{profile.id}",
-            "github_login": profile.login,
-            "connected": True,
-            "name": profile.name,
-            "avatar_url": profile.avatar_url,
-        }
-
-        return RedirectResponse(
-            build_frontend_redirect(resolved_settings.frontend_app_url, auth="success"),
-            status_code=status.HTTP_302_FOUND,
-        )
-
-    @app.get(
-        "/api/v1/me",
-        response_model=MeResponse,
-        responses={401: {"model": ErrorEnvelope}},
-    )
-    async def get_me(request: Request) -> Union[MeResponse, JSONResponse]:
-        user = request.session.get("user")
-
-        if not user:
-            return build_error_response(
-                status.HTTP_401_UNAUTHORIZED,
-                "unauthenticated",
-                "Authentication required.",
-            )
-
-        return MeResponse(**user)
-
-    @app.get(
-        "/api/v1/repositories",
-        response_model=RepositoryListResponse,
-        responses={401: {"model": ErrorEnvelope}, 502: {"model": ErrorEnvelope}},
-    )
-    async def list_repositories(
-        request: Request,
-        visibility: Literal["all", "public", "private"] = "all",
-        cursor: Optional[str] = Query(default=None),
-        github: GitHubOAuthService = Depends(get_github_service),
-    ) -> Union[RepositoryListResponse, JSONResponse]:
-        if not request.session.get("user"):
-            return build_error_response(
-                status.HTTP_401_UNAUTHORIZED,
-                "unauthenticated",
-                "Authentication required.",
-            )
-
-        github_token_id = request.session.get("github_token_id")
-        access_token = (
-            request.app.state.github_access_tokens.get(github_token_id)
-            if github_token_id
-            else None
-        )
-
-        if not access_token:
-            return build_error_response(
-                status.HTTP_401_UNAUTHORIZED,
-                "github_token_missing",
-                "GitHub session token is missing. Sign in again.",
-            )
-
-        try:
-            repository_page = await github.fetch_repositories(
-                access_token,
-                visibility=visibility,
-                cursor=cursor,
-            )
-        except GitHubOAuthError as error_response:
-            status_code = (
-                status.HTTP_400_BAD_REQUEST
-                if error_response.code == "invalid_repository_cursor"
-                else status.HTTP_502_BAD_GATEWAY
-            )
-            return build_error_response(status_code, error_response.code, error_response.message)
-
-        return RepositoryListResponse(
-            items=[
-                RepositoryResponse(
-                    id=repository.id,
-                    full_name=repository.full_name,
-                    private=repository.private,
-                    owner_type=repository.owner_type,
-                    default_branch=repository.default_branch,
-                    permissions=RepositoryPermissionsResponse(**repository.permissions),
-                    html_url=repository.html_url,
-                    description=repository.description,
-                    updated_at=repository.updated_at,
-                )
-                for repository in repository_page.items
-            ],
-            next_cursor=repository_page.next_cursor,
-        )
-
-    @app.post("/api/v1/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
-    async def logout(request: Request) -> Response:
-        github_token_id = request.session.get("github_token_id")
-        if github_token_id:
-            request.app.state.github_access_tokens.pop(github_token_id, None)
-        request.session.clear()
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    app.include_router(auth.router)
+    app.include_router(repositories.router)
+    app.include_router(analysis_jobs.router)
+    app.include_router(analysis_events.router)
+    app.include_router(results.router)
 
     return app
 

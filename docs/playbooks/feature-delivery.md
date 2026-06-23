@@ -32,8 +32,10 @@ If you want the strongest automatic path, use [default-feature-flow.md](/Users/d
 ### 1. Start an interactive OMX session
 ```bash
 cd /Users/donggun/Desktop/Commitfolio
-omx
+omx --madmax
 ```
+
+Commitfolio의 기본 개발 세션은 `omx --madmax`로 시작한다. `--madmax`는 승인/샌드박스 우회 옵션이므로 destructive/irreversible 작업은 여전히 명시적 요청이 있을 때만 수행한다. 이미 full-access/equivalent 권한 세션이면 재실행하지 않고 madmax 규칙 충족으로 보고한다.
 
 ### 2. Plan before coding
 Inside Codex, use prompts like:
@@ -72,7 +74,7 @@ omx team
 ## Branch and PR Discipline
 - One approved task per branch.
 - Branch name should include the issue number when one exists.
-- PR body should link the PRD and task doc.
+- PR body should link the PRD and task doc, and agent-authored PR titles/bodies should be written in Korean by default.
 - A task is incomplete if verification evidence is missing.
 
 ## Suggested Branch Naming

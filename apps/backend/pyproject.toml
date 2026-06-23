@@ -9,9 +9,12 @@ description = "Commitfolio FastAPI backend bootstrap"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+  "alembic>=1.14,<1.15",
   "fastapi>=0.115,<0.116",
   "httpx>=0.28,<0.29",
   "itsdangerous>=2.2,<2.3",
+  "psycopg[binary]>=3.2,<3.3",
+  "SQLAlchemy>=2.0,<2.1",
   "uvicorn>=0.34,<0.35"
 ]
 

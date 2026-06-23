@@ -58,12 +58,23 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - When work spans multiple concerns, split commits by intent and reviewability, even if that means making more commits.
 - Run lint, typecheck, tests, and static analysis after changes.
 - Final reports must include changed files, simplifications made, and remaining risks.
+- For work that touches external consoles, secrets, DB, deployment, OAuth, billing, or domains, include a Korean "사용자 액션" section in the opening brief and final report. List exactly what the human must do, where to do it, what env names are needed, what Codex can verify, and what logs/URLs should be returned. Use `docs/playbooks/operator-deployment-actions.md` for Commitfolio DB/deploy/OAuth actions.
+
+## Commitfolio OMX madmax rule
+- For future Commitfolio work, include the project `madmax` execution rule in the opening workflow brief.
+- Every new Commitfolio OMX/Codex runtime session should be started with `omx --madmax` by default, or with the equivalent `--madmax` option on the relevant OMX launch command when supported.
+- Do not use the non-existent `omx --madmode` flag; the canonical project rule is `madmax`.
+- `--madmax` bypasses Codex approvals and sandbox restrictions, so still avoid destructive/irreversible actions unless the user explicitly asks for them.
+- If this session is already running with equivalent full-access permissions, state that the madmax rule is already effectively satisfied and continue without relaunching.
 
 ## Commitfolio Project Contract
 - Product target: ship a public MVP that turns one GitHub repository's activity into a portfolio document with evidence links.
 - Target stack until the repo says otherwise: `apps/frontend` = React + Vite + TypeScript, `apps/backend` = FastAPI, persistence = PostgreSQL, realtime status = SSE.
+- Frontend architecture rule: `apps/frontend` follows the lightweight feature-sliced architecture in `docs/architecture/frontend-code-architecture.md`; new UI work should use `app/`, `features/`, `entities/`, and `shared/` boundaries instead of growing root `App.tsx`.
 - Document-first delivery is mandatory for net-new feature work. Create or update a PRD in `docs/prd/` and an execution checklist in `docs/tasks/` before implementation.
 - Default feature-flow rule: a net-new feature request should automatically enter a plan-first pipeline without waiting for a special command from the user.
+- Feature briefing rule: before starting any feature-development implementation, briefly state in Korean which OMX/project workflow will be used, why it fits, what alternatives were considered or recommended (`default feature flow`, `$plan`, `$ralph`, `$team`, solo execution), which docs/issues/branches will be created or updated, and what verification commands will prove completion.
+- Korean project-language rule: 에이전트가 작성하는 commit message, GitHub issue 본문, PR 제목/본문, release notes, task completion notes, 사용자-facing 변경 요약은 기본적으로 한국어로 작성한다. 영어 기술 용어, command/API 이름, code identifier, `Closes #...` 같은 필수 GitHub 자동화 keyword는 더 명확하거나 필요한 경우 허용한다.
 - Auto-continue rule: after creating or updating the planning artifacts, continue into implementation by default unless the request is materially ambiguous, destructive, security-sensitive, or the user explicitly asked for an approval gate.
 - Approval gate rule: only switch into a strict approval-waiting mode when the user explicitly says approval is required before implementation, or when the task is risky enough to require human confirmation.
 - Every feature task should point back to one PRD and keep scope narrow enough to finish with verification in one branch/PR.

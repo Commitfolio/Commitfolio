@@ -76,11 +76,11 @@ temp_body=""
 if [[ -z "$BODY_FILE" ]]; then
   temp_body="$(mktemp)"
   {
-    echo "## Summary"
-    echo "- What changed?"
-    echo "- Why did this change happen?"
+    echo "## 요약"
+    echo "- 무엇이 바뀌었나요?"
+    echo "- 왜 이 변경이 필요했나요?"
     echo
-    echo "## Linked Docs"
+    echo "## 연결 문서"
     if [[ -n "$SLUG" ]]; then
       echo "- PRD: docs/prd/${SLUG}.md"
       echo "- Task: docs/tasks/${SLUG}.md"
@@ -96,18 +96,18 @@ if [[ -z "$BODY_FILE" ]]; then
       echo "- Issue:"
     fi
     echo
-    echo "## Verification"
+    echo "## 검증"
     echo "- [ ] Lint"
     echo "- [ ] Typecheck"
     echo "- [ ] Tests"
-    echo "- [ ] Manual critical path check"
+    echo "- [ ] 핵심 경로 수동 확인"
     echo
-    echo "## Evidence"
-    echo "- Commands run:"
-    echo "- Screenshots or notes:"
-    echo "- Remaining risks:"
+    echo "## 증거"
+    echo "- 실행한 명령:"
+    echo "- 스크린샷 또는 메모:"
+    echo "- 남은 리스크:"
     echo
-    echo "## Docs Updated"
+    echo "## 문서 갱신"
     echo "- [ ] Architecture docs"
     echo "- [ ] PRD / task docs"
     echo "- [ ] API contract"

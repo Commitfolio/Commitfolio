@@ -5,9 +5,14 @@ This is the strongest harness path for this repo. The human should be able to sa
 ## Principle
 - A plain feature request is enough to start work.
 - When GitHub auth and repo access are ready, the system should follow an issue-first GitHub delivery path.
+- Feature work branches from the latest `develop` and opens PRs back into `develop` by default.
+- A deployment request means a release PR from `develop` to `main`, followed by merging `main` to trigger the deployment pipeline.
 - The system should create planning artifacts first.
 - The system should continue into implementation by default.
 - The system should only pause for ambiguity, destructive action, or explicit approval gates.
+- 에이전트가 작성하는 PR 제목/본문, issue 설명, release notes, task completion notes, 사용자-facing 요약은 기본적으로 한국어로 작성한다. 영어 기술 용어, command/API/code identifier, GitHub 자동화 keyword는 필요한 경우 허용한다.
+- 앞으로 Commitfolio 작업 브리핑에는 `madmax` 실행 규칙을 포함한다. 새 OMX/Codex 런타임 세션은 기본적으로 `omx --madmax` 또는 해당 런타임 명령의 `--madmax` 조합으로 시작한다.
+- 현재 세션이 이미 full-access/equivalent 권한이면 재실행하지 말고 "madmax 규칙 충족"으로 보고한 뒤 계속한다. `omx --madmode`는 사용하지 않는다.
 
 ## Automatic Pipeline
 1. Interpret the request and derive a short feature slug.
@@ -16,11 +21,25 @@ This is the strongest harness path for this repo. The human should be able to sa
 4. Create or update `docs/tasks/<slug>.md`.
 5. Create or update `.omx/plans/prd-<slug>.md`.
 6. Create or update `.omx/plans/test-spec-<slug>.md`.
-7. If an issue exists, branch from it using `feat/<issue>-<slug>`; otherwise keep the local branch name explicit and report the missing issue as a blocker.
+7. Sync latest `develop`, then branch from it using `feat/<issue>-<slug>` if an issue exists; otherwise keep the local branch name explicit and report the missing issue as a blocker.
 8. Implement the narrowest viable slice.
 9. Run verification using the repo baseline in `docs/playbooks/verification-baseline.md` unless the feature docs define a narrower or stricter command set.
 10. Update docs and task execution log.
-11. Push the branch and prepare a PR or draft PR when GitHub permissions allow it.
+11. Push the branch and prepare a PR or draft PR **to `develop`** when GitHub permissions allow it.
+12. Merge feature PRs into `develop` after review/checks; do not target `main` for regular feature work.
+
+## Deployment Pipeline
+When the user says "배포해줘" or otherwise asks to deploy:
+
+1. Ensure local `develop` is clean and synced with `origin/develop`.
+2. Confirm no open feature PRs still need to land in `develop`, unless the user explicitly wants a partial release.
+3. Run the verification baseline and any release-specific checks.
+4. Create or update a release PR from `develop` to `main`.
+5. Include the merged feature PRs, verification evidence, and remaining risks in the PR body, written in Korean except for technical terms or required automation keywords.
+6. Merge the release PR into `main` when checks are acceptable.
+7. Check and report the `main` branch deployment pipeline status.
+
+If no deployment pipeline exists yet, merge only when the user still wants `main` updated, and explicitly report that automatic deployment is not configured.
 
 ## When To Pause
 - The request is genuinely ambiguous.
@@ -51,7 +70,8 @@ Expected system behavior:
 ## Output Discipline
 - Do not dump the full plan repeatedly.
 - Keep progress updates short.
-- End with evidence: changed files, verification run, remaining risks.
+- End with a Korean evidence summary: changed files, verification run, remaining risks.
+- If the work touches external consoles, secrets, DB, deployment, OAuth, billing, or domains, include a concrete "사용자 액션" section that lists what the human must do, where to do it, what env names are needed, and what logs/URLs Codex needs back. Use `docs/playbooks/operator-deployment-actions.md` as the baseline for DB/deploy/OAuth actions.
 
 ## Related Playbooks
 - For the stricter GitHub issue → branch → PR operating lane, use `docs/playbooks/github-issue-first-flow.md`.
