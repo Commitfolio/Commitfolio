@@ -14,6 +14,7 @@
   - `apps/frontend/src/styles.css`
   - `docs/prd/stitch-frontend-ui.md`
   - deployed UI at `https://commitfolio.vercel.app/` reviewed on 2026-06-23
+  - preview UI at `https://commitfolio-k264n7ust-dongguli08s-projects.vercel.app/` reviewed on 2026-06-23
 
 ## Brand
 - Personality: calm, credible, editorial, productized
@@ -25,6 +26,7 @@
   - First-time visitors should understand the product in one scan.
   - Signed-in users should know the next recommended action without reading long paragraphs.
   - Core steps should feel like one guided flow instead of disconnected cards.
+  - Generated portfolio results should read like concrete project outcomes, not commit log summaries.
 - Non-goals:
   - Full rebrand or new product positioning
   - Backend/API/auth behavior changes
@@ -56,6 +58,7 @@
 - Principle 1: Reduce noise before adding emphasis.
 - Principle 2: One panel, one decision. Each panel should surface a primary action and demote everything else.
 - Principle 3: Product trust comes from consistency, not decoration.
+- Principle 4: Result content must privilege interpreted contribution over raw evidence listing.
 - Tradeoffs:
   - Keep expressive hero language, but cap scale to preserve readability.
   - Preserve existing Korean user-visible strings where tests depend on them.
@@ -75,6 +78,8 @@
   - action clusters with clear primary/secondary/quiet variants
   - contextual support cards for signed-out and signed-in states
   - optional environment note hidden from production flow
+  - result summary header that surfaces project type, contribution density, and evidence confidence
+  - richer result sections that separate "무엇을 만들었는가", "어떻게 만들었는가", "왜 중요한가"
 - Variants and states:
   - `button primary`: recommended next step
   - `button secondary`: meaningful but non-primary action
@@ -106,6 +111,11 @@
 - Tone: calm, direct, evidence-based
 - Terminology: keep Korean product copy, allow GitHub/API terms where clearer
 - Microcopy rules: explain why a user would take an action, not just what the action is called
+- Result-writing rules:
+  - Never describe a contribution as merely "근거를 남겼습니다."
+  - Prefer "어떤 기능/플로우를 구현했고, 어떤 기술/모듈을 다뤘는지"가 먼저 보이게 쓴다.
+  - Raw evidence titles are support, not the final narrative.
+  - Tech stack should infer framework/domain concepts before fallbacking to file extensions.
 
 ## Implementation constraints
 - Framework/styling system: React + Vite + TypeScript, single global CSS file
@@ -115,4 +125,4 @@
 - Test/screenshot expectations: lint, typecheck, vitest, build, and before/after screenshot review on local + deployed flows
 
 ## Open questions
-- [ ] Production deploy path after feature PR merge still depends on repo release workflow and may require human merge choice.
+- [ ] Preview deployment URL의 세션/상태 이상이 stale build인지 cross-site/session 문제인지 최종 배포 후 다시 확인해야 한다.
