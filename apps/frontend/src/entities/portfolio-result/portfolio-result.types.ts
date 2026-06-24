@@ -39,4 +39,4 @@ export type PortfolioResultList = {
   items: PortfolioResultListItem[];
 };
 
-export type ResultState = "idle" | "generating" | "loaded" | "error";
+export type ResultState = "idle" | "generating" | "rendering" | "loaded" | "error";

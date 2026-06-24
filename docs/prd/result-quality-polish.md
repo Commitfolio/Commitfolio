@@ -11,10 +11,13 @@
 ## Problem
 Stage 5/6에서 rule-based 포트폴리오 결과 생성, 조회, 편집, 재생성이 가능해졌다. 하지만 결과 문장과 면접 질문은 아직 deterministic 템플릿 중심이라 실제 제출용 문서로 쓰기에는 문장 자연스러움과 후보자 관점의 설득력이 부족할 수 있다.
 
+현재 가장 큰 한계는 LLM 유무보다도 분석 근거의 밀도다. commit 제목, PR 제목, changed file 정도만으로는 특정 저장소가 어떤 기술을 선택했고 어떤 사용자 기능을 구현했는지 충분히 설명하기 어렵다. 특히 Flutter/mobile 저장소처럼 화면 흐름, 앱 구조, 플랫폼 설정, 의존성 선택이 중요한 경우에는 README, 언어 분포, 저장소 구조, repository metadata 같은 정적 근거를 함께 읽어야 포트폴리오 품질이 올라간다.
+
 동시에 MVP 핵심 경로는 OpenAI API 키나 외부 LLM 안정성에 의존하면 안 된다. 따라서 OpenAI는 결과 품질을 높이는 선택형 후처리 레이어여야 하며, 실패하거나 설정되지 않아도 기존 결과 생성 흐름은 그대로 성공해야 한다.
 
 ## Goal
 - 기존 rule-based result generation을 기본 fallback으로 유지한다.
+- deterministic fallback 자체의 품질을 높여 OpenAI 없이도 제출 가능한 초안을 만든다.
 - OpenAI API key가 설정된 경우에만 optional quality enhancement를 실행한다.
 - LLM 실패/미설정 시 기존 결과 생성 흐름을 실패시키지 않는다.
 - evidence link 구조와 result section shape를 유지한다.
@@ -26,6 +29,7 @@ Stage 5/6에서 rule-based 포트폴리오 결과 생성, 조회, 편집, 재생
 - PDF 다운로드
 - 복잡한 prompt 관리 시스템
 - evidence link 재작성 또는 재매칭
+- full repository clone 기반 정적 분석
 - 다중 모델/벤더 추상화
 
 ## Requirements
@@ -34,6 +38,8 @@ Stage 5/6에서 rule-based 포트폴리오 결과 생성, 조회, 편집, 재생
 - OpenAI 설정은 환경 변수 기반으로 선택적으로 읽는다.
 - API key가 없으면 기존 deterministic generator만 실행한다.
 - OpenAI 호출 실패, timeout, invalid response는 fallback으로 처리한다.
+- deterministic generator는 repository metadata, README, language distribution, top-level structure 같은 GitHub 근거를 함께 사용할 수 있어야 한다.
+- 결과 문구는 저장소 소개, 사용 기술, 구현 기능, 협업/품질 흔적을 현재 evidence 안에서 최대한 구체적으로 요약해야 한다.
 - 후처리 입력에는 result section content와 근거 요약에 필요한 최소 evidence context만 포함한다.
 - 후처리 출력은 기존 result section shape 안에서만 반영한다.
 - evidence links는 기존 link id/source mapping을 유지한다.
@@ -52,6 +58,7 @@ Stage 5/6에서 rule-based 포트폴리오 결과 생성, 조회, 편집, 재생
 
 ## Acceptance Criteria
 - [ ] OpenAI key 없이 backend result 생성/regenerate 테스트가 통과한다.
+- [ ] OpenAI 없이도 README/언어/구조 근거를 반영한 더 구체적인 결과 문구가 생성된다.
 - [ ] OpenAI 성공 fake에서 section shape와 evidence links가 유지된다.
 - [ ] OpenAI 실패 fake에서 fallback result가 저장되고 API는 성공한다.
 - [ ] frontend detail 화면에서 enhancement 상태가 표시된다.
@@ -69,9 +76,11 @@ Stage 5/6에서 rule-based 포트폴리오 결과 생성, 조회, 편집, 재생
 - OpenAI 호출 지연이 analysis job 완료 시간을 늘릴 수 있다.
 - 너무 많은 evidence를 prompt에 넣으면 비용과 latency가 증가한다.
 - frontend가 fallback을 실패처럼 표현하면 사용자가 불필요하게 불안해질 수 있다.
+- README/구조 기반 규칙이 특정 저장소에 과적합되면 일반 저장소 품질이 흔들릴 수 있다.
 
 ## Risk Responses
 - schema validation에 실패하면 enhancement를 버리고 fallback을 저장한다.
 - timeout을 짧게 두고 실패를 정상 fallback으로 기록한다.
 - prompt 입력은 대표 section/evidence 요약으로 제한한다.
 - UI 문구는 “기본 생성 사용”처럼 중립적으로 표시한다.
+- deterministic 규칙은 README/언어/구조/commit/PR/issue를 함께 보되, 각 근거가 없을 때는 순차 fallback 되도록 설계한다.
