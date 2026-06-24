@@ -898,6 +898,8 @@ def test_flutter_repository_result_generation_uses_readme_and_structure() -> Non
     assert "Flutter" in draft.tech_stack
     assert "Dart" in draft.tech_stack
     assert any("여행 일정 생성 및 수정" in item for item in draft.key_contributions)
+    assert any("UI 컴포넌트와 화면 구성" in item for item in draft.key_contributions)
+    assert any("데이터 연동 계층" in item or "상태 관리 로직" in item for item in draft.key_contributions)
     assert any("Flutter/Dart" in item or "모바일" in item for item in draft.key_contributions)
     assert "여행 동선을 공유" in draft.project_overview
 

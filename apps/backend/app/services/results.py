@@ -309,39 +309,52 @@ def build_contribution_titles(
     contributions: list[str] = []
     feature_candidates = extract_feature_candidates(readme_text)
     pull_request_titles = extract_titles_by_source_type(evidence, "pull_request")
+    commit_titles = extract_titles_by_source_type(evidence, "commit")
     issue_titles = extract_titles_by_source_type(evidence, "issue")
+    changed_files = extract_changed_filenames(evidence)
+    layer_summary = build_layer_summary(
+        project_profile=project_profile,
+        changed_files=changed_files,
+        structure_entries=structure_entries,
+        readme_text=readme_text,
+    )
 
     for feature in feature_candidates[:2]:
         contributions.append(
-            f"사용자 관점의 '{feature}' 흐름을 구현 대상으로 정리하고 관련 변경 이력을 GitHub 근거와 함께 설명할 수 있게 했습니다."
+            f"'{feature}' 흐름을 중심으로 기능을 확장하고, {layer_summary}까지 함께 정리해 사용자가 실제로 완료하는 흐름으로 연결했습니다."
         )
 
     for title in pull_request_titles[:2]:
         contributions.append(
-            f"'{title}' 작업을 통해 {project_profile['implementation_focus']} 구현 범위를 구체적인 pull request 근거로 남겼습니다."
+            f"'{title}' 작업에서는 {project_profile['implementation_focus']} 구현을 진행하면서 {layer_summary}을 함께 다듬어 기능 단위 변경이 화면, 상태, 데이터 흐름까지 이어지도록 만들었습니다."
+        )
+
+    for title in commit_titles[:2]:
+        contributions.append(
+            f"'{title}' 변경을 통해 세부 구현과 운영 설정을 보강하고, {layer_summary} 관점에서 실제 동작에 필요한 마무리 작업까지 연결했습니다."
         )
 
     if project_profile["kind"] == "flutter":
         contributions.append(
-            "Flutter/Dart 기반 모바일 앱 구조에서 화면 흐름, 플랫폼 디렉터리, 의존성 설정 근거를 함께 묶어 앱 구현 경험을 설명할 수 있게 했습니다."
+            "Flutter/Dart 기반 모바일 앱 구조에서 화면 흐름, 상태 관리, 네트워크 연동, 플랫폼 권한 및 리소스 설정 근거를 함께 묶어 앱 구현 경험을 더 입체적으로 설명할 수 있게 했습니다."
         )
     elif project_profile["kind"] == "backend":
         contributions.append(
-            "API, 데이터 모델, 서버 구조 변경을 commit과 changed file 근거로 연결해 백엔드 구현 경험을 더 구체적으로 드러냈습니다."
+            "API, 데이터 모델, 서버 구조 변경을 commit과 changed file 근거로 연결하고, 요청 처리부터 저장 계층까지 이어지는 구현 범위를 한 문장 안에서 설명할 수 있게 했습니다."
         )
     elif project_profile["kind"] == "frontend":
         contributions.append(
-            "UI 구조와 사용자 상호작용 변경을 changed file과 PR 근거로 연결해 프론트엔드 구현 경험을 더 설득력 있게 정리했습니다."
+            "UI 구조와 사용자 상호작용 변경을 changed file과 PR 근거로 연결하고, 컴포넌트 구성과 데이터 연결이 함께 움직였다는 점을 드러내도록 정리했습니다."
         )
 
     if issue_titles:
         contributions.append(
-            f"이슈 '{issue_titles[0]}' 를 통해 요구사항 추적 흔적을 남기고, 구현 결과와 협업 맥락을 함께 설명할 수 있게 했습니다."
+            f"이슈 '{issue_titles[0]}' 를 통해 요구사항 추적 흔적을 남기고, 구현 결과가 어떤 문제를 해결하려는 변경이었는지 협업 맥락까지 함께 설명할 수 있게 했습니다."
         )
 
     if {"android", "ios", "lib"} & {entry.lower() for entry in structure_entries}:
         contributions.append(
-            "저장소 구조를 기준으로 앱 코드와 플랫폼별 설정 범위를 함께 설명해 구현 범위가 단순 문구가 아니라 실제 코드 구조에 닿도록 만들었습니다."
+            "저장소 구조를 기준으로 앱 코드와 플랫폼별 설정 범위를 함께 설명해 구현 범위가 단순 기능 나열이 아니라 실제 코드 구조와 릴리즈 준비 단계까지 닿도록 만들었습니다."
         )
 
     return dedupe_preserve_order(contributions)[:5]
@@ -359,6 +372,71 @@ def extract_titles_by_source_type(evidence: list[AnalysisEvidence], source_type:
             titles.append(clean_markdown_text(title))
 
     return dedupe_preserve_order(titles)
+
+
+def extract_changed_filenames(evidence: list[AnalysisEvidence]) -> list[str]:
+    filenames: list[str] = []
+    for item in evidence:
+        if item.source_type != "changed_file":
+            continue
+        filename = item.payload_json.get("filename")
+        if isinstance(filename, str) and filename.strip():
+            filenames.append(filename.strip())
+    return dedupe_preserve_order(filenames)
+
+
+def build_layer_summary(
+    *,
+    project_profile: dict[str, str],
+    changed_files: list[str],
+    structure_entries: list[str],
+    readme_text: str,
+) -> str:
+    lowered_files = [value.lower() for value in changed_files]
+    structure_set = {value.lower() for value in structure_entries}
+    readme_lower = readme_text.lower()
+
+    layer_labels: list[str] = []
+
+    if any(token in path for path in lowered_files for token in ("widget", "screen", "page", "view", "ui", "presentation")):
+        layer_labels.append("UI 컴포넌트와 화면 구성")
+    if any(token in path for path in lowered_files for token in ("riverpod", "provider", "bloc", "state", "controller", "viewmodel")):
+        layer_labels.append("상태 관리 로직")
+    if any(token in path for path in lowered_files for token in ("repository", "datasource", "api", "client", "service", "network")):
+        layer_labels.append("데이터 연동 계층")
+    if any(token in path for path in lowered_files for token in ("router", "route", "navigation")):
+        layer_labels.append("화면 이동 흐름")
+    if any(token in path for path in lowered_files for token in ("android", "ios", "permission", "image_picker", "camera", "photo", "assets")):
+        layer_labels.append("플랫폼 권한과 리소스 설정")
+
+    if "riverpod" in readme_lower and "상태 관리 로직" not in layer_labels:
+        layer_labels.append("상태 관리 로직")
+    if any(keyword in readme_lower for keyword in ("api", "dio", "retrofit", "repository")) and "데이터 연동 계층" not in layer_labels:
+        layer_labels.append("데이터 연동 계층")
+    if {"android", "ios"} & structure_set and "플랫폼 권한과 리소스 설정" not in layer_labels:
+        layer_labels.append("플랫폼 권한과 리소스 설정")
+    if "lib" in structure_set and "UI 컴포넌트와 화면 구성" not in layer_labels and project_profile["kind"] == "flutter":
+        layer_labels.append("UI 컴포넌트와 화면 구성")
+
+    if not layer_labels:
+        if project_profile["kind"] == "flutter":
+            layer_labels = ["UI 컴포넌트와 화면 구성", "상태 관리 로직", "데이터 연동 계층"]
+        elif project_profile["kind"] == "backend":
+            layer_labels = ["API 계층", "데이터 모델", "서비스 로직"]
+        elif project_profile["kind"] == "frontend":
+            layer_labels = ["UI 컴포넌트와 화면 구성", "상태 관리 로직", "데이터 연동 계층"]
+        else:
+            layer_labels = ["핵심 구현 계층"]
+
+    return join_korean_list(layer_labels[:4])
+
+
+def join_korean_list(values: list[str]) -> str:
+    if not values:
+        return ""
+    if len(values) == 1:
+        return values[0]
+    return ", ".join(values[:-1]) + f"와 {values[-1]}"
 
 
 def infer_tech_stack(
