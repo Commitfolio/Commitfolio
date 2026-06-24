@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 from dataclasses import dataclass
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -228,31 +230,68 @@ class GitHubOAuthService:
         branch: str,
     ) -> list[GitHubEvidenceItem]:
         owner, repo = self._split_full_name(full_name)
+        repo_api_url = f"https://api.github.com/repos/{owner}/{repo}"
 
         async with httpx.AsyncClient(timeout=15.0) as client:
+            repository_payload = await self._get_github_object(
+                client,
+                access_token,
+                repo_api_url,
+                "repository_lookup_failed",
+            )
             commits = await self._get_github_list(
                 client,
                 access_token,
-                f"https://api.github.com/repos/{owner}/{repo}/commits",
+                f"{repo_api_url}/commits",
                 "commits_lookup_failed",
                 params={"sha": branch, "per_page": 10},
             )
             pulls = await self._get_github_list(
                 client,
                 access_token,
-                f"https://api.github.com/repos/{owner}/{repo}/pulls",
+                f"{repo_api_url}/pulls",
                 "pull_requests_lookup_failed",
                 params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 10},
             )
             issues = await self._get_github_list(
                 client,
                 access_token,
-                f"https://api.github.com/repos/{owner}/{repo}/issues",
+                f"{repo_api_url}/issues",
                 "issues_lookup_failed",
                 params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 10},
             )
+            languages = await self._get_optional_github_object(
+                client,
+                access_token,
+                f"{repo_api_url}/languages",
+                "languages_lookup_failed",
+            )
+            readme = await self._get_optional_github_object(
+                client,
+                access_token,
+                f"{repo_api_url}/readme",
+                "readme_lookup_failed",
+                params={"ref": branch},
+            )
+            root_contents = await self._get_optional_github_list(
+                client,
+                access_token,
+                f"{repo_api_url}/contents",
+                "repository_structure_lookup_failed",
+                params={"ref": branch},
+            )
 
             evidence: list[GitHubEvidenceItem] = []
+            evidence.append(self._decode_repository_metadata(repository_payload))
+            language_evidence = self._decode_languages(full_name, repository_payload, languages)
+            if language_evidence:
+                evidence.append(language_evidence)
+            readme_evidence = self._decode_readme(full_name, repository_payload, readme)
+            if readme_evidence:
+                evidence.append(readme_evidence)
+            structure_evidence = self._decode_repository_structure(full_name, repository_payload, root_contents)
+            if structure_evidence:
+                evidence.append(structure_evidence)
             evidence.extend(self._decode_commits(commits))
             evidence.extend(self._decode_pull_requests(pulls))
             evidence.extend(self._decode_issues(issues))
@@ -265,14 +304,14 @@ class GitHubOAuthService:
                 reviews = await self._get_github_list(
                     client,
                     access_token,
-                    f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+                    f"{repo_api_url}/pulls/{pull_number}/reviews",
                     "reviews_lookup_failed",
                     params={"per_page": 10},
                 )
                 files = await self._get_github_list(
                     client,
                     access_token,
-                    f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/files",
+                    f"{repo_api_url}/pulls/{pull_number}/files",
                     "changed_files_lookup_failed",
                     params={"per_page": 20},
                 )
@@ -309,6 +348,98 @@ class GitHubOAuthService:
 
         return payload
 
+    async def _get_github_object(
+        self,
+        client: httpx.AsyncClient,
+        access_token: str,
+        url: str,
+        error_code: str,
+        *,
+        params: Optional[dict[str, object]] = None,
+    ) -> dict[str, Any]:
+        response = await client.get(
+            url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {access_token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            params=params,
+        )
+        payload = self._decode_json(response, error_code)
+
+        if response.status_code == 403:
+            raise GitHubOAuthError(error_code, "GitHub permission or rate limit prevented evidence lookup.")
+
+        if response.status_code != 200 or not isinstance(payload, dict):
+            raise GitHubOAuthError(error_code, "GitHub evidence lookup failed.")
+
+        return payload
+
+    async def _get_optional_github_object(
+        self,
+        client: httpx.AsyncClient,
+        access_token: str,
+        url: str,
+        error_code: str,
+        *,
+        params: Optional[dict[str, object]] = None,
+    ) -> Optional[dict[str, Any]]:
+        response = await client.get(
+            url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {access_token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            params=params,
+        )
+
+        if response.status_code == 404:
+            return None
+
+        payload = self._decode_json(response, error_code)
+
+        if response.status_code == 403:
+            raise GitHubOAuthError(error_code, "GitHub permission or rate limit prevented evidence lookup.")
+
+        if response.status_code != 200 or not isinstance(payload, dict):
+            raise GitHubOAuthError(error_code, "GitHub evidence lookup failed.")
+
+        return payload
+
+    async def _get_optional_github_list(
+        self,
+        client: httpx.AsyncClient,
+        access_token: str,
+        url: str,
+        error_code: str,
+        *,
+        params: Optional[dict[str, object]] = None,
+    ) -> Optional[list[Any]]:
+        response = await client.get(
+            url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {access_token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            params=params,
+        )
+
+        if response.status_code == 404:
+            return None
+
+        payload = self._decode_json(response, error_code)
+
+        if response.status_code == 403:
+            raise GitHubOAuthError(error_code, "GitHub permission or rate limit prevented evidence lookup.")
+
+        if response.status_code != 200 or not isinstance(payload, list):
+            raise GitHubOAuthError(error_code, "GitHub evidence lookup failed.")
+
+        return payload
+
     @staticmethod
     def _split_full_name(full_name: str) -> tuple[str, str]:
         parts = full_name.split("/", 1)
@@ -316,6 +447,110 @@ class GitHubOAuthService:
             raise GitHubOAuthError("invalid_repository_full_name", "Repository full name is invalid.")
 
         return parts[0], parts[1]
+
+    @staticmethod
+    def _decode_repository_metadata(payload: dict[str, Any]) -> GitHubEvidenceItem:
+        return GitHubEvidenceItem(
+            source_type="repository_meta",
+            source_id=str(payload.get("full_name") or ""),
+            url=str(payload.get("html_url") or ""),
+            payload={
+                "full_name": payload.get("full_name"),
+                "description": payload.get("description"),
+                "homepage": payload.get("homepage"),
+                "topics": payload.get("topics") if isinstance(payload.get("topics"), list) else [],
+                "primary_language": payload.get("language"),
+                "default_branch": payload.get("default_branch"),
+                "stargazers_count": payload.get("stargazers_count"),
+                "forks_count": payload.get("forks_count"),
+                "open_issues_count": payload.get("open_issues_count"),
+            },
+        )
+
+    @staticmethod
+    def _decode_languages(
+        full_name: str,
+        repository_payload: dict[str, Any],
+        payload: Optional[dict[str, Any]],
+    ) -> Optional[GitHubEvidenceItem]:
+        if not payload:
+            return None
+
+        languages = {
+            str(name): int(bytes_of_code)
+            for name, bytes_of_code in payload.items()
+            if isinstance(name, str) and isinstance(bytes_of_code, int)
+        }
+        if not languages:
+            return None
+
+        return GitHubEvidenceItem(
+            source_type="language",
+            source_id=full_name,
+            url=str(repository_payload.get("html_url") or ""),
+            payload={"languages": languages},
+        )
+
+    @staticmethod
+    def _decode_readme(
+        full_name: str,
+        repository_payload: dict[str, Any],
+        payload: Optional[dict[str, Any]],
+    ) -> Optional[GitHubEvidenceItem]:
+        if not payload:
+            return None
+
+        encoded = payload.get("content")
+        if not isinstance(encoded, str):
+            return None
+
+        normalized = encoded.replace("\n", "")
+        try:
+            decoded = base64.b64decode(normalized).decode("utf-8", errors="ignore")
+        except (ValueError, binascii.Error):
+            return None
+
+        content = decoded.strip()
+        if not content:
+            return None
+
+        return GitHubEvidenceItem(
+            source_type="readme",
+            source_id=full_name,
+            url=str(payload.get("html_url") or repository_payload.get("html_url") or ""),
+            payload={
+                "path": payload.get("path") or "README.md",
+                "content": content[:12000],
+            },
+        )
+
+    @staticmethod
+    def _decode_repository_structure(
+        full_name: str,
+        repository_payload: dict[str, Any],
+        payload: Optional[list[Any]],
+    ) -> Optional[GitHubEvidenceItem]:
+        if not payload:
+            return None
+
+        entries: list[dict[str, str]] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            item_type = item.get("type")
+            if isinstance(name, str) and isinstance(item_type, str):
+                entries.append({"name": name, "type": item_type})
+
+        if not entries:
+            return None
+
+        return GitHubEvidenceItem(
+            source_type="repository_structure",
+            source_id=full_name,
+            url=str(repository_payload.get("html_url") or ""),
+            payload={"entries": entries[:40]},
+        )
 
     @staticmethod
     def _decode_commits(items: list[Any]) -> list[GitHubEvidenceItem]:
