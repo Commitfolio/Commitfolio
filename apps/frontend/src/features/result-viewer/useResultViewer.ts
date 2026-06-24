@@ -13,6 +13,8 @@ import {
   updatePortfolioResult,
 } from "../../shared/api/commitfolio-api";
 
+const RESULT_REVEAL_DELAY_MS = 5000;
+
 export function useResultViewer() {
   const [resultState, setResultState] = useState<ResultState>("idle");
   const [resultError, setResultError] = useState<string | null>(null);
@@ -21,15 +23,21 @@ export function useResultViewer() {
   const [savePending, setSavePending] = useState(false);
   const [regeneratePending, setRegeneratePending] = useState(false);
 
+  async function revealResult(nextResult: PortfolioResult) {
+    setResultState("rendering");
+    await waitForRevealDelay(RESULT_REVEAL_DELAY_MS);
+    setResult(nextResult);
+    setResultState("loaded");
+  }
+
   async function handleGenerateResult(jobId: string) {
     setResultState("generating");
     setResultError(null);
 
     try {
       const generated = await generatePortfolioResult(jobId);
-      setResult(generated);
-      setResultState("loaded");
       await loadRecentResults();
+      await revealResult(generated);
     } catch (error) {
       setResultError(error instanceof Error ? error.message : "결과를 생성하는 중 알 수 없는 오류가 발생했습니다.");
       setResultState("error");
@@ -92,9 +100,8 @@ export function useResultViewer() {
 
     try {
       const regenerated = await regeneratePortfolioResult(result.result_id);
-      setResult(regenerated);
-      setResultState("loaded");
       await loadRecentResults();
+      await revealResult(regenerated);
     } catch (error) {
       setResultError(error instanceof Error ? error.message : "결과를 다시 생성하는 중 알 수 없는 오류가 발생했습니다.");
       setResultState("error");
@@ -124,4 +131,10 @@ export function useResultViewer() {
     resultState,
     savePending,
   };
+}
+
+function waitForRevealDelay(delayMs: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, delayMs);
+  });
 }

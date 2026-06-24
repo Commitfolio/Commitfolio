@@ -77,6 +77,16 @@ export default function App() {
     window.print();
   }
 
+  const resultGenerationPending =
+    results.resultState === "generating" || results.resultState === "rendering";
+
+  const resultGenerationLabel =
+    results.resultState === "rendering"
+      ? "결과 정리 중..."
+      : results.resultState === "generating"
+        ? "결과 생성 중..."
+        : "포트폴리오 결과 생성";
+
   return (
     <main className="shell">
       <nav className="topbar" aria-label="Commitfolio navigation">
@@ -233,11 +243,9 @@ export default function App() {
                 resultGenerationDisabled={
                   !analysis.analysisJob ||
                   analysis.analysisJob.status !== "completed" ||
-                  results.resultState === "generating"
+                  resultGenerationPending
                 }
-                resultGenerationLabel={
-                  results.resultState === "generating" ? "결과 생성 중..." : "포트폴리오 결과 생성"
-                }
+                resultGenerationLabel={resultGenerationLabel}
               />
             ) : null}
           </RepositorySelector>
@@ -256,6 +264,16 @@ export default function App() {
             </div>
             {results.resultError ? <p className="notice error">{results.resultError}</p> : null}
             <RecentResults items={results.recentResults} onSelectResult={results.handleSelectResult} />
+            {results.resultState === "generating" && !results.result ? (
+              <p className="notice subtle">
+                분석 결과를 생성하고 있습니다. 근거를 모아 포트폴리오 문서를 준비하는 중입니다.
+              </p>
+            ) : null}
+            {results.resultState === "rendering" ? (
+              <div className="notice subtle" aria-live="polite">
+                분석 근거를 포트폴리오 문서로 정리하는 중입니다. 약 5초 뒤 결과를 보여줍니다.
+              </div>
+            ) : null}
             {results.result ? (
               <div className="printable-result">
                 <div className="result-actions no-print">
@@ -265,7 +283,7 @@ export default function App() {
                     type="button"
                     onClick={() => void results.handleRegenerateResult()}
                   >
-                    {results.regeneratePending ? "다시 생성 중..." : "결과 다시 생성"}
+                    {results.regeneratePending ? "결과 정리 중..." : "결과 다시 생성"}
                   </button>
                 </div>
                 <ResultExportActions onPrint={handlePrintResult} />

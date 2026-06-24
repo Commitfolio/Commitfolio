@@ -53,6 +53,7 @@ describe("App", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     FakeEventSource.instances = [];
     sessionStorage.clear();
@@ -706,8 +707,13 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "포트폴리오 결과 생성" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "octocat/commitfolio portfolio draft" })).toBeInTheDocument();
+      expect(screen.getByText(/약 5초 뒤 결과를 보여줍니다/i)).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "octocat/commitfolio portfolio draft" })).toBeInTheDocument();
+    }, { timeout: 7000 });
+
     expect(screen.getAllByText("Built the API").length).toBeGreaterThan(0);
     expect(screen.getByText("OpenAI 후처리 적용")).toBeInTheDocument();
     expect(screen.getByText(/모델: gpt-test/i)).toBeInTheDocument();
@@ -733,10 +739,14 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "결과 다시 생성" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Regenerated portfolio headline" })).toBeInTheDocument();
+      expect(screen.getByText(/약 5초 뒤 결과를 보여줍니다/i)).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Regenerated portfolio headline" })).toBeInTheDocument();
+    }, { timeout: 7000 });
     expect(screen.getByText(/version 2/i)).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("subscribes to analysis progress with EventSource and stores the last sequence", async () => {
     vi.stubGlobal("EventSource", FakeEventSource);

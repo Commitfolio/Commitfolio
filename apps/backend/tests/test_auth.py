@@ -16,6 +16,8 @@ from app.github_oauth import (
     GitHubRepositoryPage,
 )
 from app.main import create_app, get_github_service
+from app.models import AnalysisEvidence, AnalysisJob, utc_now
+from app.services.results import build_result_draft
 
 
 class FakeGitHubService:
@@ -101,6 +103,66 @@ class FakeGitHubService:
         assert full_name == "octocat/commitfolio"
         assert branch == "main"
         return [
+            GitHubEvidenceItem(
+                source_type="repository_meta",
+                source_id="octocat/commitfolio",
+                url="https://github.com/octocat/commitfolio",
+                payload={
+                    "full_name": "octocat/commitfolio",
+                    "description": "GitHub 활동을 포트폴리오 문서로 바꾸는 서비스",
+                    "homepage": None,
+                    "topics": ["portfolio", "github"],
+                    "primary_language": "Python",
+                    "default_branch": "main",
+                    "stargazers_count": 3,
+                    "forks_count": 1,
+                    "open_issues_count": 5,
+                },
+            ),
+            GitHubEvidenceItem(
+                source_type="language",
+                source_id="octocat/commitfolio",
+                url="https://github.com/octocat/commitfolio",
+                payload={"languages": {"Python": 12000, "TypeScript": 9000, "CSS": 1000}},
+            ),
+            GitHubEvidenceItem(
+                source_type="readme",
+                source_id="octocat/commitfolio",
+                url="https://github.com/octocat/commitfolio/blob/main/README.md",
+                payload={
+                    "path": "README.md",
+                    "content": "\n".join(
+                        [
+                            "# Commitfolio",
+                            "",
+                            "Commitfolio는 GitHub 활동을 근거가 살아있는 포트폴리오 문서로 바꾸는 서비스입니다.",
+                            "",
+                            "## 주요 기능",
+                            "- GitHub OAuth 로그인과 저장소 선택",
+                            "- 분석 job 실행으로 commit, pull request, issue 근거 수집",
+                            "- 결과 문서 편집과 PDF 저장",
+                            "",
+                            "## Tech Stack",
+                            "- FastAPI",
+                            "- React",
+                            "- TypeScript",
+                        ]
+                    ),
+                },
+            ),
+            GitHubEvidenceItem(
+                source_type="repository_structure",
+                source_id="octocat/commitfolio",
+                url="https://github.com/octocat/commitfolio",
+                payload={
+                    "entries": [
+                        {"name": "apps", "type": "dir"},
+                        {"name": "docs", "type": "dir"},
+                        {"name": "scripts", "type": "dir"},
+                        {"name": "README.md", "type": "file"},
+                    ]
+                },
+            ),
             GitHubEvidenceItem(
                 source_type="commit",
                 source_id="abc123",
@@ -514,12 +576,16 @@ def test_analysis_job_run_collects_evidence_and_events() -> None:
     payload = run_response.json()
     assert payload["job"]["status"] == "completed"
     assert payload["job"]["progress"] == {"stage": "completed", "percent": 100}
-    assert payload["evidence"]["total_count"] == 5
+    assert payload["evidence"]["total_count"] == 9
     assert payload["evidence"]["counts"] == {
         "changed_file": 1,
         "commit": 1,
         "issue": 1,
+        "language": 1,
         "pull_request": 1,
+        "readme": 1,
+        "repository_meta": 1,
+        "repository_structure": 1,
         "review": 1,
     }
     assert [event["sequence"] for event in payload["evidence"]["latest_events"]] == list(range(1, 8))
@@ -648,20 +714,25 @@ def test_completed_analysis_job_generates_portfolio_result_and_detail() -> None:
     assert result_payload["result_id"].startswith("res_")
     assert result_payload["analysis_job_id"] == job_id
     assert result_payload["repository_full_name"] == "octocat/commitfolio"
-    assert result_payload["headline"]
-    assert result_payload["project_overview"]
-    assert result_payload["role_summary"]
-    assert result_payload["key_contributions"]
-    assert result_payload["tech_stack"]
-    assert result_payload["evidence_summary"]
+    assert "octocat/commitfolio" in result_payload["headline"]
+    assert "GitHub 활동을 포트폴리오 문서로 바꾸는 서비스" in result_payload["project_overview"]
+    assert "pull request 1건" in result_payload["role_summary"]
+    assert any("GitHub OAuth 로그인과 저장소 선택" in item for item in result_payload["key_contributions"])
+    assert "Python" in result_payload["tech_stack"]
+    assert "TypeScript" in result_payload["tech_stack"]
+    assert "README 기준 주요 기능" in result_payload["evidence_summary"]
     assert result_payload["interview_questions"]
     assert result_payload["enhancement_status"] == "not_configured"
     assert result_payload["enhancement_model"] is None
     assert result_payload["enhancement_message"] == "기본 생성 사용"
     assert result_payload["evidence_links"]
     assert {link["section_key"] for link in result_payload["evidence_links"]} >= {
+        "project_overview",
         "key_contributions",
         "evidence_summary",
+        "interview_questions",
+        "role_summary",
+        "tech_stack",
     }
 
     lookup_response = client.get(f"/api/v1/results/{result_payload['result_id']}")
@@ -719,11 +790,118 @@ def test_portfolio_result_generation_falls_back_when_openai_fails(monkeypatch: p
     assert response.status_code == 200
     payload = response.json()
     assert "octocat/commitfolio" in payload["headline"]
-    assert "Python 백엔드 개발 경험" in payload["headline"]
     assert payload["key_contributions"]
     assert payload["enhancement_status"] == "fallback"
     assert payload["enhancement_model"] == "test-model"
     assert payload["enhancement_message"] == "OpenAI 후처리 실패, 기본 생성 사용"
+
+
+def test_flutter_repository_result_generation_uses_readme_and_structure() -> None:
+    job = AnalysisJob(
+        id="job_flutter",
+        user_id="github:123",
+        repository_snapshot_id="repo_flutter",
+        repository_full_name="SERVICE-MOHAENG/Mohaeng-FE",
+        branch="main",
+        status="completed",
+        current_stage="completed",
+        progress_percent=100,
+        requested_at=utc_now(),
+    )
+    evidence = [
+        AnalysisEvidence(
+            id="ev_meta",
+            analysis_job_id=job.id,
+            source_type="repository_meta",
+            source_id=job.repository_full_name,
+            url="https://github.com/SERVICE-MOHAENG/Mohaeng-FE",
+            payload_json={
+                "description": "여행 동선을 공유하고 기록하는 모바일 서비스",
+                "primary_language": "Dart",
+            },
+            created_at=utc_now(),
+        ),
+        AnalysisEvidence(
+            id="ev_lang",
+            analysis_job_id=job.id,
+            source_type="language",
+            source_id=job.repository_full_name,
+            url="https://github.com/SERVICE-MOHAENG/Mohaeng-FE",
+            payload_json={"languages": {"Dart": 150000, "Swift": 2000}},
+            created_at=utc_now(),
+        ),
+        AnalysisEvidence(
+            id="ev_readme",
+            analysis_job_id=job.id,
+            source_type="readme",
+            source_id=job.repository_full_name,
+            url="https://github.com/SERVICE-MOHAENG/Mohaeng-FE/blob/main/README.md",
+            payload_json={
+                "content": "\n".join(
+                    [
+                        "# Mohaeng",
+                        "",
+                        "모행은 여행 동선을 공유하고 기록하는 Flutter 앱입니다.",
+                        "",
+                        "## 주요 기능",
+                        "- 여행 일정 생성 및 수정",
+                        "- 동행 모집 게시글 조회와 참여",
+                        "- 채팅 기반 일정 조율",
+                        "",
+                        "## Tech Stack",
+                        "- Flutter",
+                        "- Riverpod",
+                        "- Dio",
+                    ]
+                )
+            },
+            created_at=utc_now(),
+        ),
+        AnalysisEvidence(
+            id="ev_structure",
+            analysis_job_id=job.id,
+            source_type="repository_structure",
+            source_id=job.repository_full_name,
+            url="https://github.com/SERVICE-MOHAENG/Mohaeng-FE",
+            payload_json={
+                "entries": [
+                    {"name": "android", "type": "dir"},
+                    {"name": "ios", "type": "dir"},
+                    {"name": "lib", "type": "dir"},
+                    {"name": "pubspec.yaml", "type": "file"},
+                ]
+            },
+            created_at=utc_now(),
+        ),
+        AnalysisEvidence(
+            id="ev_pr",
+            analysis_job_id=job.id,
+            source_type="pull_request",
+            source_id="12",
+            url="https://github.com/SERVICE-MOHAENG/Mohaeng-FE/pull/12",
+            payload_json={"title": "feat: trip creation flow"},
+            created_at=utc_now(),
+        ),
+        AnalysisEvidence(
+            id="ev_file",
+            analysis_job_id=job.id,
+            source_type="changed_file",
+            source_id="12:lib/features/trip/presentation/trip_screen.dart",
+            url="https://github.com/SERVICE-MOHAENG/Mohaeng-FE/blob/main/lib/features/trip/presentation/trip_screen.dart",
+            payload_json={"filename": "lib/features/trip/presentation/trip_screen.dart"},
+            created_at=utc_now(),
+        ),
+    ]
+
+    draft = build_result_draft(job, evidence)
+
+    assert "Flutter" in draft.tech_stack
+    assert "Dart" in draft.tech_stack
+    assert any("여행 일정 생성 및 수정" in item for item in draft.key_contributions)
+    assert any("UI 컴포넌트와 화면 구성" in item for item in draft.key_contributions)
+    assert any("데이터 연동 계층" in item or "상태 관리 로직" in item for item in draft.key_contributions)
+    assert any("Flutter/Dart" in item or "모바일" in item for item in draft.key_contributions)
+    assert "여행 동선을 공유" in draft.project_overview
 
 
 def test_portfolio_result_list_returns_recent_results() -> None:
